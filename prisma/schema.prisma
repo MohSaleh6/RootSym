@@ -2,8 +2,10 @@
 // Prices are stored as integers in FILS (1 JOD = 1000 fils) to avoid float errors.
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
   output   = "../src/generated/prisma"
+  runtime  = "cloudflare"
+  moduleFormat = "esm"
 }
 
 datasource db {

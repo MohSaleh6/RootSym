@@ -41,7 +41,8 @@ RCA playground, and a full admin panel — in English and Arabic.
 |---|---|
 | Framework | Next.js 16 (App Router, React 19, TypeScript) |
 | Styling | Tailwind CSS v4 with a custom RootSym design system |
-| Database | PostgreSQL via Prisma 7 (`@prisma/adapter-pg`) |
+| Hosting | Cloudflare Workers via `@opennextjs/cloudflare` |
+| Database | Neon Postgres via Prisma 7 (`@prisma/adapter-neon`, WebSocket driver) |
 | Payments | CliQ / bank transfer with admin approval (Stripe code present but dormant — see [docs/PAYMENTS.md](docs/PAYMENTS.md)) |
 | Email | Resend (optional — falls back to server logs) |
 | Auth | Signed JWT cookie (`jose`) + edge middleware |
@@ -59,6 +60,11 @@ npm run db:seed             # load the RCA workshop and two draft workshops
 npm run dev
 ```
 
+> **DATABASE_URL must point at a Neon database.** The app talks to Postgres
+> through Neon's WebSocket driver, because Cloudflare Workers cannot open the
+> raw TCP socket that `node-postgres` needs. A free Neon branch is the usual
+> choice for development.
+
 Open <http://localhost:3000>. The admin panel lives at `/admin` and signs in
 with `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 
@@ -73,6 +79,8 @@ Useful scripts:
 | `npm run db:migrate` | Apply migrations (use in production) |
 | `npm run db:seed` | Seed the RCA workshop and site settings |
 | `npm run db:studio` | Browse the database |
+| `npm run cf:preview` | Build the Worker and run it locally on `workerd` |
+| `npm run cf:deploy` | Deploy the Worker to Cloudflare |
 
 ---
 

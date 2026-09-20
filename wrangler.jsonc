@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rootsym",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  // nodejs_compat gives the Worker the Node APIs Next.js and Prisma expect.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // NEXT_PUBLIC_* values are inlined into the client bundle at build time, so
+  // they live here rather than in `wrangler secret`. Everything secret
+  // (DATABASE_URL, AUTH_SECRET, ADMIN_PASSWORD, RESEND_API_KEY, …) is set with
+  // `npx wrangler secret put <NAME>` and never committed.
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://rootsym.workers.dev"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

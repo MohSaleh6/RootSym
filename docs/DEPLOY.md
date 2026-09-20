@@ -1,108 +1,118 @@
 # Deploying RootSym
 
-Target: **Vercel + Neon Postgres**, which is free to start and takes a custom
-domain in a couple of minutes. Anything that runs Node 20+ and can reach a
-PostgreSQL database will work just as well.
+Target: **Cloudflare Workers + Neon Postgres**.
+
+Cloudflare rather than Vercel for a concrete reason: Vercel's IP ranges are
+not reliably reachable on Orange Jordan, which is a large share of this site's
+audience. Cloudflare's network is reachable there, and it is closer to the
+rest of the region too.
 
 ---
 
 ## 1. The database (Neon)
 
-1. Create a project at <https://neon.tech> — pick the region closest to Jordan (Frankfurt is a good choice).
-2. Copy the **pooled** connection string. It looks like:
-   `postgresql://user:pass@ep-xxx-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require`
-3. Keep it for the next step.
+1. Create a project at <https://neon.tech> — Frankfurt (`aws-eu-central-1`) is the closest region to Jordan.
+2. Copy the **pooled** connection string (the host contains `-pooler`).
 
-## 2. The app (Vercel)
+The app uses Neon's WebSocket driver through `@prisma/adapter-neon`, so
+`DATABASE_URL` must be a Neon URL. Workers cannot open a raw TCP socket, which
+is what `node-postgres` would need.
 
-1. Push this repository to GitHub.
-2. At <https://vercel.com/new>, import it. Vercel detects Next.js on its own — leave the build settings alone.
-3. Add the environment variables below under **Settings → Environment Variables**, then deploy.
+## 2. The app (Cloudflare Workers)
 
-### Required
+```bash
+npx wrangler login          # once, in a browser
+npm run cf:deploy           # builds and deploys
+```
 
-| Name | Value |
-|---|---|
-| `DATABASE_URL` | The Neon pooled connection string |
-| `ADMIN_EMAIL` | The email you sign in to `/admin` with |
-| `ADMIN_PASSWORD` | A long password (or use `ADMIN_PASSWORD_HASH`) |
-| `AUTH_SECRET` | 32+ random characters — `openssl rand -base64 48` |
-| `NEXT_PUBLIC_SITE_URL` | `https://rootsym.com` — no trailing slash |
+`wrangler.jsonc` already sets everything: the Worker name (`rootsym`), the
+`nodejs_compat` flag, and the static asset binding. The first deploy prints
+your URL — `https://rootsym.<your-subdomain>.workers.dev`.
 
-### Optional but recommended
+### Secrets
 
-| Name | Value |
-|---|---|
-| `RESEND_API_KEY` | From <https://resend.com> — without it, emails only go to the server log |
-| `MAIL_FROM` | `RootSym <hello@rootsym.com>` (the domain must be verified in Resend) |
-| `ADMIN_NOTIFY_EMAIL` | Where booking alerts are sent |
+Environment variables are Worker **secrets**, set once with `wrangler`:
 
-There is no payment provider to configure. Stripe does not accept merchants
-based in Jordan, so the site runs on CliQ and bank transfer, and the payment
-details are entered in the admin panel rather than in environment variables.
-See [PAYMENTS.md](PAYMENTS.md).
+```bash
+npx wrangler secret put DATABASE_URL
+npx wrangler secret put AUTH_SECRET          # openssl rand -base64 48
+npx wrangler secret put ADMIN_EMAIL
+npx wrangler secret put ADMIN_PASSWORD
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put MAIL_FROM
+npx wrangler secret put ADMIN_NOTIFY_EMAIL
+```
+
+`NEXT_PUBLIC_SITE_URL` is different: it is inlined into the client bundle at
+build time, so it belongs in `wrangler.jsonc` under `vars`, not in a secret.
+
+### Deploying from CI instead
+
+Connect the repository under **Workers & Pages → Create → Connect to Git**.
+Set the build command to `npm run build && npx opennextjs-cloudflare build`
+and the deploy command to `npx opennextjs-cloudflare deploy`. Add the same
+variables in the dashboard.
 
 ## 3. The schema and the first data
 
-`npm run build` runs `prisma migrate deploy`, so **every deploy brings the
-database up to date on its own** — there is nothing to run by hand.
+`npm run build` runs `prisma migrate deploy`, so a deploy brings the database
+up to date on its own.
 
 For the very first deploy against an empty database, also set
 `SEED_ON_BUILD=true`. The build then loads the RCA workshop, the two draft
 workshops, two open cohorts and the payment settings. Set it back to `false`
-afterwards.
+afterwards. The seed never overwrites a row that already exists.
 
-The seed never overwrites a row that already exists, so it cannot undo an
-edit made in the admin panel — but leaving the flag on just spends build
-time for nothing.
+If the machine you are building on cannot reach the database, set
+`SKIP_MIGRATE=true` for that build and run `npm run db:migrate` separately
+from somewhere that can.
 
 ## 4. Payment details
 
 There is nothing to integrate. After the first deploy, open **Admin →
-Settings** and fill in the CliQ alias and bank details. Those are what
-customers see on their payment page and receive by email.
-
-The status panel on that page tells you at a glance whether payments, email
-and the site URL are ready.
+Settings** and fill in the CliQ alias and bank details — see
+[PAYMENTS.md](PAYMENTS.md).
 
 ## 5. Email
 
-Resend needs a verified domain before it will send from `@rootsym.com`. Until
-that is done you can keep `MAIL_FROM` as `RootSym <onboarding@resend.dev>`,
-which works immediately for testing.
+Resend needs a verified domain before it will send to anyone other than the
+account owner. Until that is done, customers will not receive their payment
+details or joining links automatically — release them from the admin Bookings
+page instead.
 
 ## 6. The domain
 
-**Vercel → Settings → Domains → Add.** Point the registrar at the records
-Vercel shows (an `A` record for the apex, a `CNAME` for `www`). HTTPS is
-issued automatically. Then update `NEXT_PUBLIC_SITE_URL` and redeploy, so
-joining links are built from the real domain.
+**Cloudflare dashboard → Workers & Pages → rootsym → Settings → Domains &
+Routes → Add custom domain.** If the domain's DNS is already on Cloudflare
+this is instant and the certificate is automatic. Then update
+`NEXT_PUBLIC_SITE_URL` in `wrangler.jsonc` and redeploy, so joining links are
+built from the real domain.
 
 ---
+
+## A note on Prisma and Workers
+
+Prisma 7's default client compiles its query engine to WebAssembly at runtime,
+which Cloudflare forbids (`Wasm code generation disallowed by embedder`). The
+fix is in `prisma/schema.prisma`:
+
+```prisma
+generator client {
+  provider     = "prisma-client"   // not prisma-client-js
+  runtime      = "cloudflare"
+  moduleFormat = "esm"
+}
+```
+
+That generator emits a Worker-safe loader that imports the WebAssembly as a
+static module instead of compiling it on the fly. Changing either line back
+will break the deployed site while leaving local development working, so they
+are easy to regress — leave them alone.
 
 ## First things to do in the admin panel
 
 1. Sign in at `/admin`.
-2. **Settings** — enter the real CliQ alias, bank name, account name and IBAN. Nothing can be paid for until this is done.
+2. **Settings** — enter the real CliQ alias, bank name, account name and IBAN.
 3. **Live dates** — schedule the first RCA cohort and paste its Microsoft Teams link.
-4. **Workshops** — check the RCA pricing, add a cover image, and publish the two draft workshops when they are ready.
-5. Place a test booking yourself and walk it through: hold → report a transfer → approve → open the joining link.
-
-## Health check
-
-`/admin/settings` shows whether Stripe, email and the site URL are wired up,
-so you can confirm the deployment at a glance.
-
----
-
-## Self-hosting instead
-
-```bash
-npm ci
-npx prisma migrate deploy
-npm run build
-npm start          # listens on :3000 — put nginx or Caddy in front for TLS
-```
-
-Set the same environment variables in the process environment. Node 20 or
-newer, and a reachable PostgreSQL 14+ instance, are the only requirements.
+4. **Workshops** — check the pricing, add a cover image, publish the drafts when ready.
+5. Place a test booking and walk it through: hold → report a transfer → approve → open the joining link.
