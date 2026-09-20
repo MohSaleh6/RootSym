@@ -1,0 +1,162 @@
+// RootSym — data model
+// Prices are stored as integers in FILS (1 JOD = 1000 fils) to avoid float errors.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EnrollmentType {
+  INDIVIDUAL
+  COMPANY
+}
+
+enum EnrollmentStatus {
+  PENDING
+  AWAITING_REVIEW
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  STRIPE
+  BANK_TRANSFER
+}
+
+enum SessionStatus {
+  SCHEDULED
+  OPEN
+  FULL
+  COMPLETED
+  CANCELLED
+}
+
+model Course {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  title             String
+  titleAr           String?
+  tagline           String
+  taglineAr         String?
+  summary           String   @db.Text
+  summaryAr         String?  @db.Text
+  description       String   @db.Text
+  descriptionAr     String?  @db.Text
+  imageUrl          String?  @db.Text
+  durationHours     Int      @default(8)
+  deliveryMode      String   @default("Live on Microsoft Teams")
+  level             String   @default("All levels")
+  languageOfDelivery String  @default("English & Arabic")
+
+  priceIndividual   Int      // fils
+  priceCompany      Int      // fils
+  maxAttendees      Int      @default(15)
+
+  outcomes          String[] @default([])
+  outcomesAr        String[] @default([])
+  audience          String[] @default([])
+  audienceAr        String[] @default([])
+  tools             String[] @default([])
+  modules           Json     @default("[]")
+  faqs              Json     @default("[]")
+
+  teamsLink         String?  @db.Text
+  accentColor       String   @default("#2E86AB")
+  icon              String   @default("target")
+
+  featured          Boolean  @default(false)
+  published         Boolean  @default(true)
+  sortOrder         Int      @default(0)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  sessions          CourseSession[]
+  enrollments       Enrollment[]
+
+  @@index([published, sortOrder])
+}
+
+model CourseSession {
+  id          String        @id @default(cuid())
+  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  title       String?
+  startsAt    DateTime
+  timezone    String        @default("Asia/Amman")
+  teamsLink   String?       @db.Text
+  seatsTotal  Int           @default(15)
+  status      SessionStatus @default(OPEN)
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  enrollments Enrollment[]
+
+  @@index([courseId, startsAt])
+}
+
+model Enrollment {
+  id                String           @id @default(cuid())
+  reference         String           @unique
+  course            Course           @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  courseId          String
+  session           CourseSession?   @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  sessionId         String?
+
+  type              EnrollmentType   @default(INDIVIDUAL)
+  fullName          String
+  email             String
+  phone             String?
+  organisation      String?
+  jobTitle          String?
+  attendees         Int              @default(1)
+  attendeeList      Json             @default("[]")
+  message           String?          @db.Text
+
+  amount            Int              // fils actually charged
+  currency          String           @default("JOD")
+  status            EnrollmentStatus @default(PENDING)
+  paymentMethod     PaymentMethod    @default(STRIPE)
+  stripeSessionId   String?          @unique
+  stripePaymentId   String?
+  transferReference String?
+  adminNotes        String?          @db.Text
+
+  accessToken       String           @unique
+  accessOpenedAt    DateTime?
+  accessRevoked     Boolean          @default(false)
+  accessResetCount  Int              @default(0)
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  paidAt            DateTime?
+
+  @@index([status, createdAt])
+  @@index([courseId])
+}
+
+model ContactMessage {
+  id           String   @id @default(cuid())
+  name         String
+  email        String
+  phone        String?
+  organisation String?
+  subject      String
+  message      String   @db.Text
+  handled      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([handled, createdAt])
+}
+
+model SiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}

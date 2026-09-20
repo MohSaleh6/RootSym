@@ -1,0 +1,92 @@
+import type { Metadata, Viewport } from "next";
+import { Cormorant_Garamond, Inter, IBM_Plex_Sans_Arabic } from "next/font/google";
+import { LocaleProvider } from "@/i18n/provider";
+import "./globals.css";
+
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const arabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-arabic",
+  subsets: ["arabic"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "RootSym — Root Cause Analysis & Systematic Actions",
+    template: "%s · RootSym",
+  },
+  description:
+    "Live eight-hour workshops by Rand Saleh that teach teams to find the true root cause and eliminate the loss — permanently. Delivered on Microsoft Teams, capped at 15 attendees.",
+  keywords: [
+    "root cause analysis",
+    "RCA training",
+    "lean manufacturing",
+    "operational excellence",
+    "continuous improvement",
+    "IWS",
+    "Rand Saleh",
+    "Jordan",
+    "loss elimination",
+  ],
+  authors: [{ name: "Rand Saleh" }],
+  openGraph: {
+    type: "website",
+    siteName: "RootSym",
+    title: "RootSym — Root Cause Analysis & Systematic Actions",
+    description:
+      "Stop treating symptoms. Start removing roots. Live eight-hour RCA workshops by Rand Saleh.",
+    url: siteUrl,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RootSym — Root Cause Analysis & Systematic Actions",
+    description: "Live eight-hour RCA workshops by Rand Saleh.",
+  },
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+  },
+  robots: { index: true, follow: true },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b2a36",
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html
+      lang="en"
+      dir="ltr"
+      suppressHydrationWarning
+      className={`${inter.variable} ${cormorant.variable} ${arabic.variable}`}
+    >
+      <head>
+        {/* Scroll reveals are JS-driven; without scripts the content must still show. */}
+        <noscript>
+          <style>{`[data-reveal]{opacity:1!important;transform:none!important}`}</style>
+        </noscript>
+      </head>
+      <body className="antialiased">
+        <LocaleProvider>{children}</LocaleProvider>
+      </body>
+    </html>
+  );
+}
