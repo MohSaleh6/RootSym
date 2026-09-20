@@ -79,14 +79,41 @@ export function bankTransferEmail(opts: {
   courseTitle: string;
   reference: string;
   amount: string;
-  instructions: string;
+  rows: { label: string; value: string }[];
+  notes: string;
+  confirmUrl: string;
+  holdHours: number;
 }) {
+  const detailRows = opts.rows
+    .map(
+      (r) => `
+      <tr>
+        <td style="padding:7px 0;color:#5d6f77;font-size:13px;white-space:nowrap;">${escapeHtml(r.label)}</td>
+        <td style="padding:7px 0 7px 16px;color:#16323d;font-size:14px;font-weight:600;direction:ltr;">${escapeHtml(r.value)}</td>
+      </tr>`,
+    )
+    .join("");
+
   return SHELL(`
     <p style="margin:0 0 14px;">Hello ${escapeHtml(opts.name)},</p>
-    <p style="margin:0 0 14px;">We have reserved your place on <strong>${escapeHtml(opts.courseTitle)}</strong> for 48 hours.</p>
-    <p style="margin:0 0 14px;">Amount due: <strong>${escapeHtml(opts.amount)}</strong><br/>Reference: <strong>${escapeHtml(opts.reference)}</strong></p>
-    <div style="background:#f4efe1;border-radius:12px;padding:16px;margin:0 0 16px;white-space:pre-line;">${escapeHtml(opts.instructions)}</div>
-    <p style="margin:0;">Once the transfer lands we confirm your seat and email your single-use joining link.</p>
+    <p style="margin:0 0 14px;">Your place on <strong>${escapeHtml(opts.courseTitle)}</strong> is held for the next ${opts.holdHours} hours.</p>
+    <p style="margin:0 0 6px;">Amount due</p>
+    <p style="margin:0 0 18px;font-size:26px;font-weight:700;color:#0b2a36;">${escapeHtml(opts.amount)}</p>
+
+    <div style="background:#f4efe1;border-radius:12px;padding:18px 20px;margin:0 0 18px;">
+      <table style="width:100%;border-collapse:collapse;">${detailRows}</table>
+    </div>
+
+    <p style="margin:0 0 6px;">Put this reference in the transfer note:</p>
+    <p style="margin:0 0 18px;font-size:20px;font-weight:700;letter-spacing:.06em;color:#0b2a36;direction:ltr;">${escapeHtml(opts.reference)}</p>
+
+    ${opts.notes ? `<p style="margin:0 0 18px;white-space:pre-line;color:#5d6f77;font-size:13px;">${escapeHtml(opts.notes)}</p>` : ""}
+
+    <p style="margin:0 0 20px;">Once you have sent it, tell us on the page below and we will confirm your seat and release your joining link.</p>
+    <p style="margin:0 0 24px;">
+      <a href="${opts.confirmUrl}" style="display:inline-block;background:#c9a227;color:#0b2a36;text-decoration:none;font-weight:700;padding:14px 26px;border-radius:999px;">I have sent the transfer</a>
+    </p>
+    <p style="margin:0;color:#5d6f77;font-size:13px;">That page also keeps the payment details, so you can come back to it any time.</p>
   `);
 }
 

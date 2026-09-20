@@ -126,6 +126,8 @@ model Enrollment {
   stripeSessionId   String?          @unique
   stripePaymentId   String?
   transferReference String?
+  transferNote      String?          @db.Text
+  holdExpiresAt     DateTime?
   adminNotes        String?          @db.Text
 
   accessToken       String           @unique

@@ -68,7 +68,13 @@ function fetchCourses() {
       sessions: {
         where: { startsAt: { gte: new Date() }, status: { in: ["OPEN", "SCHEDULED"] } },
         orderBy: { startsAt: "asc" },
-        include: { _count: { select: { enrollments: true } } },
+        include: {
+          _count: {
+            select: {
+              enrollments: { where: { status: { notIn: ["CANCELLED", "REFUNDED"] } } },
+            },
+          },
+        },
       },
     },
   });

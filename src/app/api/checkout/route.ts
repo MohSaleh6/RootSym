@@ -4,6 +4,7 @@ import { checkoutSchema } from "@/lib/validation";
 import { makeAccessToken, makeReference } from "@/lib/tokens";
 import { getStripe, stripeCurrency, stripeEnabled, toStripeAmount } from "@/lib/stripe";
 import { sendBankTransferInstructions, siteUrl } from "@/lib/enrollment";
+import { holdExpiry } from "@/lib/payments";
 
 export const runtime = "nodejs";
 
@@ -43,7 +44,11 @@ export async function POST(request: Request) {
   if (input.sessionId) {
     const session = await prisma.courseSession.findFirst({
       where: { id: input.sessionId, courseId: course.id },
-      include: { _count: { select: { enrollments: true } } },
+      include: {
+        _count: {
+          select: { enrollments: { where: { status: { notIn: ["CANCELLED", "REFUNDED"] } } } },
+        },
+      },
     });
     if (session && session._count.enrollments < session.seatsTotal) {
       sessionId = session.id;
@@ -67,7 +72,9 @@ export async function POST(request: Request) {
       jobTitle: input.jobTitle || null,
       attendees,
       amount,
-      status: method === "STRIPE" ? "PENDING" : "AWAITING_REVIEW",
+      // A transfer booking holds the seat until the money arrives.
+      status: "PENDING",
+      holdExpiresAt: method === "BANK_TRANSFER" ? holdExpiry() : null,
       paymentMethod: method,
       message: input.message || null,
       accessToken: makeAccessToken(),
@@ -79,7 +86,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       mode: "transfer",
       reference: enrollment.reference,
-      redirect: `/checkout/success?ref=${enrollment.reference}`,
+      redirect: `/checkout/confirm/${enrollment.accessToken}`,
       fellBack: stripeRequested,
     });
   }
@@ -125,13 +132,13 @@ export async function POST(request: Request) {
     console.error("[checkout] Stripe session failed", error);
     await prisma.enrollment.update({
       where: { id: enrollment.id },
-      data: { status: "AWAITING_REVIEW", paymentMethod: "BANK_TRANSFER" },
+      data: { paymentMethod: "BANK_TRANSFER", holdExpiresAt: holdExpiry() },
     });
     await sendBankTransferInstructions(enrollment.id);
     return NextResponse.json({
       mode: "transfer",
       reference: enrollment.reference,
-      redirect: `/checkout/success?ref=${enrollment.reference}`,
+      redirect: `/checkout/confirm/${enrollment.accessToken}`,
       fellBack: true,
     });
   }

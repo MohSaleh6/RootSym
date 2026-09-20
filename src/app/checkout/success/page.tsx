@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
-import { confirmEnrollmentPaid, getSetting } from "@/lib/enrollment";
-import { formatJod } from "@/lib/money";
+import { redirect } from "next/navigation";
+import { confirmEnrollmentPaid } from "@/lib/enrollment";
 import SiteShell from "@/components/SiteShell";
 import SuccessView from "./SuccessView";
 
@@ -52,8 +52,13 @@ export default async function SuccessPage({ searchParams }: Search) {
     });
   }
 
+  // Anything not yet paid belongs on the payment page, which carries the
+  // transfer details and the "I have sent it" step.
+  if (enrollment && enrollment.status !== "PAID") {
+    redirect(`/checkout/confirm/${enrollment.accessToken}`);
+  }
+
   const paid = enrollment?.status === "PAID";
-  const instructions = paid ? null : await getSetting("bank_transfer_instructions");
 
   return (
     <SiteShell>
@@ -62,8 +67,8 @@ export default async function SuccessPage({ searchParams }: Search) {
         reference={enrollment?.reference ?? null}
         courseTitle={enrollment?.course.title ?? null}
         accessPath={enrollment ? `/access/${enrollment.accessToken}` : null}
-        instructions={enrollment ? instructions : null}
-        amount={enrollment ? formatJod(enrollment.amount) : null}
+        instructions={null}
+        amountFils={enrollment?.amount ?? null}
       />
     </SiteShell>
   );

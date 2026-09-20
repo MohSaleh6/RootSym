@@ -18,7 +18,7 @@ RCA playground, and a full admin panel — in English and Arabic.
 - A portfolio and biography built from Rand Saleh's CV — experience, education, certifications and skills.
 - A workshop catalogue with full agendas, outcomes, audience, tools and FAQs.
 - Two-tier pricing on every workshop: an individual seat price and a flat company-room price capped at 15 attendees.
-- Checkout with **Stripe** card payments or **bank transfer / CliQ**, whichever is configured.
+- Checkout on **CliQ or bank transfer** — the seat is held for 48 hours, the customer reports their transfer, and you approve it.
 - A **playground** of five interactive activities that drill the RCA method.
 - One click switches the whole site between **English and Arabic**, including right-to-left layout.
 
@@ -29,9 +29,9 @@ RCA playground, and a full admin panel — in English and Arabic.
 **For the admin**
 - Create and edit workshops: title, tagline, summary, full description, cover image, duration, level, language, delivery mode, individual price, company price, max attendees, accent colour, icon, learning outcomes, audience, tools, an hour-by-hour agenda and FAQs — each with an Arabic translation field.
 - Schedule live cohorts and attach a Microsoft Teams link to each one.
-- Approve bank transfers, reissue or revoke joining links, and keep private notes on every booking.
+- See reported transfers, approve them, reissue or revoke joining links, and keep private notes on every booking.
 - Read and handle contact-form messages.
-- Edit the bank-transfer instructions that customers receive.
+- Edit the CliQ alias and bank details that customers are shown.
 
 ---
 
@@ -42,7 +42,7 @@ RCA playground, and a full admin panel — in English and Arabic.
 | Framework | Next.js 16 (App Router, React 19, TypeScript) |
 | Styling | Tailwind CSS v4 with a custom RootSym design system |
 | Database | PostgreSQL via Prisma 7 (`@prisma/adapter-pg`) |
-| Payments | Stripe Checkout, with a manual bank-transfer fallback |
+| Payments | CliQ / bank transfer with admin approval (Stripe code present but dormant — see [docs/PAYMENTS.md](docs/PAYMENTS.md)) |
 | Email | Resend (optional — falls back to server logs) |
 | Auth | Signed JWT cookie (`jose`) + edge middleware |
 | 3D / motion | A hand-written canvas wireframe renderer, no 3D library |
@@ -85,7 +85,7 @@ Vercel, the custom domain, Stripe keys and the webhook, and Resend.
 
 ## How the one-time joining link works
 
-1. Payment clears (Stripe webhook, the success page verifying with Stripe, or an admin approving a bank transfer).
+1. Payment clears — in practice, an admin approving a reported transfer.
 2. The booking is marked `PAID` and an email goes out containing `/access/<token>`, where the token is 24 random bytes.
 3. Opening that page shows a confirmation button — nothing is revealed by a link preview or a prefetch.
 4. Pressing it runs a conditional update (`accessOpenedAt IS NULL`), so two simultaneous clicks cannot both win. The Teams link comes back only to the winner.
@@ -98,11 +98,13 @@ consumed — the page says the date is still to be announced.
 
 ## Money
 
-Prices are stored as integers in **fils** (1 JOD = 1000 fils), which is also
-Stripe's minor unit for JOD, so amounts pass through untouched. If your Stripe
-account cannot settle in JOD, set `STRIPE_CURRENCY` and `STRIPE_RATE_PER_JOD`
-and the storefront keeps quoting JOD while Stripe charges in the supported
-currency.
+Prices are stored as integers in **fils** (1 JOD = 1000 fils), so there is no
+floating-point rounding anywhere. `src/lib/money.ts` is the only module that
+converts, parses or formats an amount.
+
+Stripe cannot onboard merchants based in Jordan, so card payments are off by
+default. [docs/PAYMENTS.md](docs/PAYMENTS.md) covers how the CliQ flow works
+and what it would take to add cards later.
 
 ---
 

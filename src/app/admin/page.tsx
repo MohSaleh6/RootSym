@@ -28,7 +28,9 @@ export default async function AdminDashboard() {
         take: 4,
         include: {
           course: { select: { title: true } },
-          _count: { select: { enrollments: true } },
+          _count: {
+            select: { enrollments: { where: { status: { notIn: ["CANCELLED", "REFUNDED"] } } } },
+          },
         },
       }),
     ]);

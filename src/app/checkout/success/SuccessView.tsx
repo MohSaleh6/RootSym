@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowUpRight, CircleCheck, Clock3, Mail, Banknote } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { formatJod } from "@/lib/money";
 import Reveal from "@/components/Reveal";
 
 export default function SuccessView({
@@ -11,16 +12,16 @@ export default function SuccessView({
   courseTitle,
   accessPath,
   instructions,
-  amount,
+  amountFils,
 }: {
   paid: boolean;
   reference: string | null;
   courseTitle: string | null;
   accessPath: string | null;
   instructions: string | null;
-  amount: string | null;
+  amountFils: number | null;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const copy = paid ? t.success.paid : t.success.pending;
 
   return (
@@ -80,8 +81,10 @@ export default function SuccessView({
                 <Banknote className="h-4 w-4" strokeWidth={1.8} />
                 {t.success.transferTitle}
               </p>
-              {amount && (
-                <p className="mt-4 font-display text-3xl font-semibold text-cream">{amount}</p>
+              {amountFils !== null && (
+                <p className="mt-4 font-display text-3xl font-semibold text-cream">
+                  {formatJod(amountFils, locale)}
+                </p>
               )}
               <pre className="mt-4 whitespace-pre-wrap font-sans text-[0.88rem] leading-relaxed text-sky/85">
                 {instructions}

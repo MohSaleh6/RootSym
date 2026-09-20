@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "./prisma";
 import { formatJod } from "./money";
 import { accessEmail, adminAlertEmail, bankTransferEmail, sendMail } from "./mail";
+import { HOLD_HOURS, getPaymentDetails, paymentRows } from "./payments";
 
 export function siteUrl(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
@@ -9,6 +10,10 @@ export function siteUrl(): string {
 
 export function accessUrl(token: string): string {
   return `${siteUrl()}/access/${token}`;
+}
+
+export function confirmUrl(token: string): string {
+  return `${siteUrl()}/checkout/confirm/${token}`;
 }
 
 export async function getSetting(key: string, fallback = ""): Promise<string> {
@@ -89,29 +94,50 @@ export async function sendBankTransferInstructions(enrollmentId: string): Promis
   });
   if (!enrollment) return;
 
-  const instructions = await getSetting(
-    "bank_transfer_instructions",
-    "Bank transfer details will be sent to you shortly.",
-  );
+  const details = await getPaymentDetails();
+  const rows = paymentRows(details).map((r) => ({ label: r.label, value: r.value }));
+  const legacy = await getSetting("bank_transfer_instructions");
+  const notes = details.notes || legacy;
 
   await sendMail({
     to: enrollment.email,
-    subject: `Seat reserved — ${enrollment.course.title} (${enrollment.reference})`,
+    subject: `Seat held — ${enrollment.course.title} (${enrollment.reference})`,
     html: bankTransferEmail({
       name: enrollment.fullName,
       courseTitle: enrollment.course.title,
       reference: enrollment.reference,
       amount: formatJod(enrollment.amount),
-      instructions,
+      rows,
+      notes,
+      confirmUrl: confirmUrl(enrollment.accessToken),
+      holdHours: HOLD_HOURS,
     }),
   });
 
-  await notifyAdmin(`New bank-transfer booking — ${enrollment.reference}`, [
+  await notifyAdmin(`Seat held, awaiting transfer — ${enrollment.reference}`, [
     `Course: ${enrollment.course.title}`,
     `Name: ${enrollment.fullName} <${enrollment.email}>`,
     `Amount: ${formatJod(enrollment.amount)}`,
-    "Approve it in the admin panel once the transfer clears.",
+    `Held until: ${enrollment.holdExpiresAt?.toISOString() ?? "—"}`,
   ]);
+}
+
+/** The customer has told us the money is on its way. */
+export async function notifyTransferSubmitted(enrollmentId: string): Promise<void> {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { id: enrollmentId },
+    include: { course: true },
+  });
+  if (!enrollment) return;
+
+  await notifyAdmin(`Transfer reported — ${enrollment.reference}`, [
+    `Course: ${enrollment.course.title}`,
+    `Name: ${enrollment.fullName} <${enrollment.email}>`,
+    `Amount: ${formatJod(enrollment.amount)}`,
+    `Their reference: ${enrollment.transferReference || "—"}`,
+    enrollment.transferNote ? `Note: ${enrollment.transferNote}` : "",
+    "Check the account, then approve it on the Bookings page.",
+  ].filter(Boolean));
 }
 
 export async function notifyAdmin(title: string, lines: string[]): Promise<void> {

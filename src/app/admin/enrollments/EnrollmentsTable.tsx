@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Banknote,
   Check,
   Send,
   RefreshCw,
@@ -33,6 +34,9 @@ export type EnrollmentRow = {
   paymentMethod: string;
   message: string | null;
   adminNotes: string | null;
+  transferReference: string | null;
+  transferNote: string | null;
+  holdExpiresAt: string | null;
   accessToken: string;
   accessOpenedAt: string | null;
   accessRevoked: boolean;
@@ -172,6 +176,12 @@ export default function EnrollmentsTable({ rows }: { rows: EnrollmentRow[] }) {
                   <span className="text-[0.86rem] font-semibold tabular-nums text-abyss">
                     {formatJod(r.amount)}
                   </span>
+                  {r.transferReference && r.status === "AWAITING_REVIEW" && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/50 bg-gold/12 px-2.5 py-1 text-[0.64rem] font-semibold text-gold">
+                      <Banknote className="h-3 w-3" strokeWidth={2.2} />
+                      transfer reported
+                    </span>
+                  )}
                   <Badge value={r.status} />
                   <ChevronDown
                     className={`h-4 w-4 text-slate-ink transition-transform duration-400 ${isOpen ? "rotate-180" : ""}`}
@@ -218,6 +228,19 @@ export default function EnrollmentsTable({ rows }: { rows: EnrollmentRow[] }) {
                           <dt className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-slate-ink/60">Live date</dt>
                           <dd className="mt-1 text-abyss">{r.sessionLabel ?? "Next available cohort"}</dd>
                         </div>
+                        {r.holdExpiresAt && r.status !== "PAID" && (
+                          <div>
+                            <dt className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-slate-ink/60">Seat held until</dt>
+                            <dd
+                              className={`mt-1 ${
+                                new Date(r.holdExpiresAt) < new Date() ? "text-ember" : "text-abyss"
+                              }`}
+                            >
+                              {dateFmt.format(new Date(r.holdExpiresAt))}
+                              {new Date(r.holdExpiresAt) < new Date() && " — expired"}
+                            </dd>
+                          </div>
+                        )}
                         <div>
                           <dt className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-slate-ink/60">Joining link</dt>
                           <dd className="mt-1 text-abyss">
@@ -230,6 +253,26 @@ export default function EnrollmentsTable({ rows }: { rows: EnrollmentRow[] }) {
                           </dd>
                         </div>
                       </dl>
+
+                      {r.transferReference && (
+                        <div className="mt-4 rounded-xl border border-gold/45 bg-gold/8 p-4">
+                          <p className="flex items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-ember">
+                            <Banknote className="h-3.5 w-3.5" strokeWidth={2} />
+                            Transfer reported by the customer
+                          </p>
+                          <p className="mt-2 font-mono text-[0.95rem] font-semibold text-abyss" dir="ltr">
+                            {r.transferReference}
+                          </p>
+                          {r.transferNote && (
+                            <p className="mt-2 whitespace-pre-line text-[0.84rem] leading-relaxed text-slate-ink">
+                              {r.transferNote}
+                            </p>
+                          )}
+                          <p className="mt-2.5 text-[0.76rem] text-slate-ink/75">
+                            Check the account for {formatJod(r.amount)}, then approve below.
+                          </p>
+                        </div>
+                      )}
 
                       {r.message && (
                         <div className="mt-4 rounded-xl border border-dune bg-cream p-4">

@@ -261,54 +261,68 @@ export default function CheckoutForm({ course, stripeReady }: Props) {
             <Reveal delay={220}>
               <fieldset className="rounded-[1.4rem] border border-dune bg-parchment p-6">
                 <legend className="field-label !mb-0 px-2">{t.checkout.payment}</legend>
-                <div className="mt-4 space-y-3">
-                  {(
-                    [
-                      {
-                        key: "STRIPE" as const,
-                        label: t.checkout.payCard,
-                        desc: t.checkout.payCardDesc,
-                        icon: CreditCard,
-                        disabled: !stripeReady,
-                      },
-                      {
-                        key: "BANK_TRANSFER" as const,
-                        label: t.checkout.payTransfer,
-                        desc: t.checkout.payTransferDesc,
-                        icon: Banknote,
-                        disabled: false,
-                      },
-                    ]
-                  ).map((opt) => {
-                    const active = method === opt.key;
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        disabled={opt.disabled}
-                        onClick={() => setMethod(opt.key)}
-                        aria-pressed={active}
-                        className={`flex w-full items-start gap-4 rounded-2xl border p-5 text-start transition-all duration-400 disabled:cursor-not-allowed disabled:opacity-40 ${
-                          active ? "border-gold bg-gold/10" : "border-dune bg-cream hover:border-teal/40"
-                        }`}
-                      >
-                        <span
-                          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                            active ? "bg-gold text-ink" : "bg-sand text-teal"
+
+                {stripeReady ? (
+                  <div className="mt-4 space-y-3">
+                    {(
+                      [
+                        {
+                          key: "STRIPE" as const,
+                          label: t.checkout.payCard,
+                          desc: t.checkout.payCardDesc,
+                          icon: CreditCard,
+                        },
+                        {
+                          key: "BANK_TRANSFER" as const,
+                          label: t.checkout.payTransfer,
+                          desc: t.checkout.payTransferDesc,
+                          icon: Banknote,
+                        },
+                      ]
+                    ).map((opt) => {
+                      const active = method === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setMethod(opt.key)}
+                          aria-pressed={active}
+                          className={`flex w-full items-start gap-4 rounded-2xl border p-5 text-start transition-all duration-400 ${
+                            active ? "border-gold bg-gold/10" : "border-dune bg-cream hover:border-teal/40"
                           }`}
                         >
-                          <opt.icon className="h-4 w-4" strokeWidth={1.8} />
-                        </span>
-                        <span>
-                          <span className="block font-semibold text-abyss">{opt.label}</span>
-                          <span className="mt-1 block text-[0.8rem] leading-relaxed text-slate-ink">
-                            {opt.desc}
+                          <span
+                            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                              active ? "bg-gold text-ink" : "bg-sand text-teal"
+                            }`}
+                          >
+                            <opt.icon className="h-4 w-4" strokeWidth={1.8} />
                           </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                          <span>
+                            <span className="block font-semibold text-abyss">{opt.label}</span>
+                            <span className="mt-1 block text-[0.8rem] leading-relaxed text-slate-ink">
+                              {opt.desc}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Cards are not configured — there is only one way to pay, so
+                     present it as a fact rather than a disabled choice. */
+                  <div className="mt-4 flex items-start gap-4 rounded-2xl border border-gold/45 bg-gold/8 p-5">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold text-ink">
+                      <Banknote className="h-4 w-4" strokeWidth={1.8} />
+                    </span>
+                    <span>
+                      <span className="block font-semibold text-abyss">{t.checkout.payOnlyTitle}</span>
+                      <span className="mt-1 block text-[0.84rem] leading-relaxed text-slate-ink">
+                        {t.checkout.payOnlyDesc}
+                      </span>
+                    </span>
+                  </div>
+                )}
               </fieldset>
             </Reveal>
           </div>

@@ -15,7 +15,9 @@ export default async function AdminSessionsPage() {
       orderBy: { startsAt: "asc" },
       include: {
         course: { select: { title: true } },
-        _count: { select: { enrollments: true } },
+        _count: {
+          select: { enrollments: { where: { status: { notIn: ["CANCELLED", "REFUNDED"] } } } },
+        },
       },
     }),
   ]);

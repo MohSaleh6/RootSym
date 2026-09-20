@@ -333,23 +333,21 @@ async function main() {
     console.log("✓ two open cohorts scheduled");
   }
 
+  // Payment details are left blank on purpose — the admin fills them in at
+  // /admin/settings, and the site tells customers the details are coming by
+  // email until they are set.
   const settings: Record<string, string> = {
-    bank_transfer_instructions: [
-      "Bank: (add your bank name)",
-      "Account name: Rand Saleh",
-      "IBAN: (add your IBAN)",
-      "CliQ alias: (add your CliQ alias)",
-      "",
-      "Please put your booking reference in the transfer note, then reply to this email with a screenshot of the transfer.",
-    ].join("\n"),
-    bank_transfer_instructions_ar: [
-      "البنك: (أضف اسم البنك)",
-      "اسم الحساب: رند صالح",
-      "الآيبان: (أضف رقم الآيبان)",
-      "اسم كليك: (أضف اسم كليك)",
-      "",
-      "يرجى كتابة رقم حجزك في ملاحظة التحويل، ثم الرد على هذه الرسالة بصورة من إشعار التحويل.",
-    ].join("\n"),
+    pay_cliq_alias: "",
+    pay_cliq_name: "Rand Saleh",
+    pay_bank_name: "",
+    pay_account_name: "Rand Ali Saleh",
+    pay_account_number: "",
+    pay_iban: "",
+    pay_swift: "",
+    pay_notes:
+      "Transfers are checked on working days. Put your booking reference in the transfer note so we can match it to your seat.",
+    pay_notes_ar:
+      "تُراجَع التحويلات في أيام العمل. يرجى كتابة رقم حجزك في ملاحظة التحويل حتى نتمكن من مطابقته بمقعدك.",
   };
 
   for (const [key, value] of Object.entries(settings)) {
