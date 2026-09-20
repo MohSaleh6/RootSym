@@ -42,16 +42,19 @@ based in Jordan, so the site runs on CliQ and bank transfer, and the payment
 details are entered in the admin panel rather than in environment variables.
 See [PAYMENTS.md](PAYMENTS.md).
 
-## 3. Create the schema
+## 3. The schema and the first data
 
-After the first deploy, run the migration against the production database:
+`npm run build` runs `prisma migrate deploy`, so **every deploy brings the
+database up to date on its own** — there is nothing to run by hand.
 
-```bash
-DATABASE_URL="<your neon url>" npx prisma migrate deploy
-DATABASE_URL="<your neon url>" npm run db:seed     # optional: loads the RCA workshop
-```
+For the very first deploy against an empty database, also set
+`SEED_ON_BUILD=true`. The build then loads the RCA workshop, the two draft
+workshops, two open cohorts and the payment settings. Set it back to `false`
+afterwards.
 
-You can run both from your own machine — they only touch the database.
+The seed never overwrites a row that already exists, so it cannot undo an
+edit made in the admin panel — but leaving the flag on just spends build
+time for nothing.
 
 ## 4. Payment details
 
