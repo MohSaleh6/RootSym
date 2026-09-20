@@ -21,7 +21,7 @@ export default function Hero() {
 
       {/* the 3D structure */}
       <RootSystem3D className="pointer-events-none absolute inset-y-0 end-[-6%] hidden h-full w-[62%] opacity-95 lg:block" />
-      <RootSystem3D className="pointer-events-none absolute inset-x-0 bottom-0 block h-[52%] w-full opacity-55 lg:hidden" />
+      <RootSystem3D className="pointer-events-none absolute inset-x-0 bottom-0 block h-[36%] w-full opacity-40 lg:hidden" />
 
       {/* corner engineering ticks */}
       <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
@@ -35,7 +35,7 @@ export default function Hero() {
         <line x1="0" y1="50%" x2="100%" y2="50%" stroke="url(#hero-tick)" strokeWidth="1" opacity=".22" />
       </svg>
 
-      <div className="relative mx-auto flex min-h-[calc(100svh-72px)] max-w-7xl flex-col justify-center px-5 pb-28 pt-16 sm:px-8">
+      <div className="relative mx-auto flex min-h-[calc(100svh-72px)] max-w-7xl flex-col justify-center px-5 pb-20 pt-10 sm:px-8 sm:pb-28 sm:pt-16">
         <div className="max-w-2xl">
           <Reveal delay={60}>
             <span className="inline-flex items-center gap-2.5 rounded-full border border-gold/30 bg-gold/8 px-4 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-brass">
@@ -75,13 +75,13 @@ export default function Hero() {
           </Reveal>
 
           <Reveal delay={240}>
-            <p className="mt-8 max-w-xl text-[1.02rem] leading-relaxed text-sky/85">
+            <p className="mt-6 max-w-xl text-[0.98rem] leading-relaxed text-sky/85 sm:mt-8 sm:text-[1.02rem]">
               {t.hero.lead}
             </p>
           </Reveal>
 
           <Reveal delay={320}>
-            <div className="mt-10 flex flex-wrap items-center gap-3.5">
+            <div className="mt-8 flex flex-wrap items-center gap-3.5 sm:mt-10">
               <Link href="/courses" className="btn-gold">
                 {t.hero.ctaPrimary}
                 <ArrowUpRight className="h-4 w-4 flip-x" strokeWidth={2} />
@@ -100,7 +100,7 @@ export default function Hero() {
           </Reveal>
 
           <Reveal delay={420}>
-            <dl className="mt-14 grid max-w-lg grid-cols-3 gap-5 border-t border-sky/15 pt-8">
+            <dl className="mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-sky/15 pt-6 sm:mt-14 sm:gap-5 sm:pt-8">
               {stats.map((s, i) => (
                 <div key={i} className="group">
                   <dt className="font-display text-4xl font-semibold text-brass transition-transform duration-500 group-hover:-translate-y-0.5">
