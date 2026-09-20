@@ -180,7 +180,7 @@ export default function CheckoutForm({ course, stripeReady }: Props) {
             {/* details */}
             <Reveal delay={160}>
               <fieldset className="rounded-[1.4rem] border border-dune bg-parchment p-6">
-                <legend className="field-label !mb-0 px-2">{t.about.title}</legend>
+                <legend className="field-label !mb-0 px-2">{t.checkout.details}</legend>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <label className="sm:col-span-2">
                     <span className="field-label">{t.checkout.fullName} *</span>
