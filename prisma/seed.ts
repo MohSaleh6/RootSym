@@ -5,7 +5,7 @@ import { PrismaClient } from "../src/generated/prisma/client";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
-const RCA = {
+export const RCA = {
   slug: "root-cause-analysis",
   title: "Root Cause Analysis — Eliminate the Loss, Not the Symptom",
   titleAr: "تحليل الأسباب الجذرية — اقضِ على الخسارة لا على العَرَض",
@@ -243,7 +243,7 @@ This is not a lecture. Every hour ends with the group doing the work on a real c
   ],
 };
 
-const DRAFTS = [
+export const DRAFTS = [
   {
     slug: "loss-elimination-oee",
     title: "Loss Elimination & OEE — Find the Hours You Are Already Paying For",
@@ -287,9 +287,11 @@ const DRAFTS = [
 ];
 
 async function main() {
+  // `update: {}` on purpose — re-running the seed must never overwrite
+  // content that has since been edited in the admin panel.
   const rca = await prisma.course.upsert({
     where: { slug: RCA.slug },
-    update: RCA,
+    update: {},
     create: RCA,
   });
   console.log(`✓ course: ${rca.slug}`);
@@ -357,6 +359,7 @@ async function main() {
 }
 
 main()
+  .then(() => console.log("✓ seed complete"))
   .catch((e) => {
     console.error(e);
     process.exit(1);
