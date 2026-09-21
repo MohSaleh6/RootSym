@@ -10,12 +10,17 @@ import Reveal from "@/components/Reveal";
 export default function ContactView() {
   const { t, locale } = useI18n();
   const [state, setState] = useState<"idle" | "busy" | "sent" | "error">("idle");
+  // What the server said went wrong, when it says anything useful. Without
+  // this the form shows one fixed sentence for every failure, which tells
+  // neither the visitor nor us anything.
+  const [reason, setReason] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
     setState("busy");
+    setReason(null);
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
@@ -29,7 +34,12 @@ export default function ContactView() {
           message: String(data.get("message") || ""),
         }),
       });
-      if (!res.ok) throw new Error("failed");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setReason(typeof body?.error === "string" ? body.error : null);
+        setState("error");
+        return;
+      }
       form.reset();
       setState("sent");
     } catch {
@@ -97,7 +107,7 @@ export default function ContactView() {
                 {state === "error" && (
                   <p className="mt-5 flex items-center gap-2.5 rounded-xl border border-ember/40 bg-ember/10 px-4 py-3 text-[0.86rem] text-abyss">
                     <TriangleAlert className="h-4 w-4 shrink-0 text-ember" strokeWidth={1.9} />
-                    {t.contact.error}
+                    {reason ?? t.contact.error}
                   </p>
                 )}
 
