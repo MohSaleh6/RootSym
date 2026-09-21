@@ -69,8 +69,14 @@ Cloudflare keeps two separate lists and they are not interchangeable:
   Variable: plain variables are overwritten from `wrangler.jsonc` on the next
   deploy, and secrets are not.
 
-`DATABASE_URL` therefore goes in **both** lists. Every push to that branch then
-deploys automatically.
+`DATABASE_URL` therefore goes in **both** lists.
+
+Anything starting with `NEXT_PUBLIC_` is the opposite case: it is baked into
+the JavaScript during the build, so it belongs **only** in the build list.
+Added as a runtime secret it has no effect, because by then the value it would
+have replaced is already compiled in.
+
+Every push to that branch then deploys automatically.
 
 ## 3. The schema and the first data
 
