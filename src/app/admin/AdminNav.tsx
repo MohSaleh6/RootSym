@@ -10,6 +10,7 @@ import {
   Users,
   MessageSquare,
   Settings,
+  Stethoscope,
   LogOut,
   ExternalLink,
   Menu,
@@ -24,6 +25,7 @@ const LINKS = [
   { href: "/admin/enrollments", label: "Bookings", icon: Users },
   { href: "/admin/messages", label: "Messages", icon: MessageSquare },
   { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/health", label: "Readiness", icon: Stethoscope },
 ];
 
 export default function AdminNav({ email }: { email: string }) {

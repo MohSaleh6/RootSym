@@ -12,9 +12,10 @@ import { PrismaClient } from "@/generated/prisma/client";
  * a Neon database (a free Neon branch is the usual choice for development).
  */
 
-const connectionString = process.env.DATABASE_URL;
+type Client = PrismaClient;
 
-function createClient() {
+function createClient(): Client {
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error(
       "DATABASE_URL is not set. Copy .env.example to .env and point it at your Neon database.",
@@ -26,12 +27,33 @@ function createClient() {
   return new PrismaClient({ adapter });
 }
 
-const globalForPrisma = globalThis as unknown as {
-  prisma?: ReturnType<typeof createClient>;
-};
+const globalForPrisma = globalThis as unknown as { prisma?: Client };
 
-export const prisma = globalForPrisma.prisma ?? createClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function client(): Client {
+  const existing = globalForPrisma.prisma;
+  if (existing) return existing;
+  const created = createClient();
+  // One client per isolate in production too: a Worker isolate serves many
+  // requests, and a fresh pool per request would be wasted connections.
+  globalForPrisma.prisma = created;
+  return created;
 }
+
+/**
+ * Built on first use rather than at import.
+ *
+ * The difference matters when DATABASE_URL is missing: constructing eagerly
+ * would throw while the module is being imported, which Next cannot attribute
+ * to anything and which no page can catch — including the readiness page
+ * whose whole job is to say that the variable is missing. Deferred, the same
+ * misconfiguration surfaces as an ordinary rejected query.
+ */
+export const prisma: Client = new Proxy({} as Client, {
+  get(_target, property) {
+    // The real client is the receiver too, so Prisma's own getters see the
+    // `this` they expect rather than this proxy.
+    const real = client();
+    const value = Reflect.get(real, property, real);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
