@@ -46,12 +46,24 @@ npx wrangler secret put ADMIN_NOTIFY_EMAIL
 `NEXT_PUBLIC_SITE_URL` is different: it is inlined into the client bundle at
 build time, so it belongs in `wrangler.jsonc` under `vars`, not in a secret.
 
-### Deploying from CI instead
+### Deploying from the dashboard instead (no local tooling)
 
-Connect the repository under **Workers & Pages → Create → Connect to Git**.
-Set the build command to `npm run build && npx opennextjs-cloudflare build`
-and the deploy command to `npx opennextjs-cloudflare deploy`. Add the same
-variables in the dashboard.
+Connect the repository under **Workers & Pages → Create → Connect to Git**
+and pick the branch you deploy from.
+
+| Setting | Value |
+|---|---|
+| Build command | `npx opennextjs-cloudflare build` |
+| Deploy command | `npx opennextjs-cloudflare deploy` |
+
+`opennextjs-cloudflare build` runs this package's own `build` script, so
+`prisma generate` and `prisma migrate deploy` happen on their own — there is
+nothing to chain in front of it.
+
+Add the variables from the secrets list above in the dashboard. `DATABASE_URL`
+is needed **both** at build time (for the migration) and at runtime (for
+queries), so if the UI separates build variables from Worker secrets, add it
+in both. Every push to that branch then deploys automatically.
 
 ## 3. The schema and the first data
 
