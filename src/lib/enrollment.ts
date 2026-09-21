@@ -162,8 +162,9 @@ export async function notifyTransferSubmitted(enrollmentId: string): Promise<voi
   ].filter(Boolean));
 }
 
-export async function notifyAdmin(title: string, lines: string[]): Promise<void> {
+/** Returns whether the notification actually left the building. */
+export async function notifyAdmin(title: string, lines: string[]): Promise<boolean> {
   const to = process.env.ADMIN_NOTIFY_EMAIL || process.env.ADMIN_EMAIL;
-  if (!to) return;
-  await sendMail({ to, subject: `[RootSym] ${title}`, html: adminAlertEmail({ title, lines }) });
+  if (!to) return false;
+  return sendMail({ to, subject: `[RootSym] ${title}`, html: adminAlertEmail({ title, lines }) });
 }

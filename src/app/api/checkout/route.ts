@@ -59,27 +59,40 @@ export async function POST(request: Request) {
   // a card, so answer honestly that it fell back.
   const cardRequested = input.paymentMethod === "STRIPE" && !cardPaymentsEnabled();
 
-  const enrollment = await prisma.enrollment.create({
-    data: {
-      reference: makeReference(),
-      courseId: course.id,
-      sessionId,
-      type: input.type,
-      fullName: input.fullName,
-      email: input.email.toLowerCase(),
-      phone: input.phone || null,
-      organisation: input.organisation || null,
-      jobTitle: input.jobTitle || null,
-      attendees,
-      amount,
-      // A transfer booking holds the seat until the money arrives.
-      status: "PENDING",
-      holdExpiresAt: holdExpiry(),
-      paymentMethod: "BANK_TRANSFER",
-      message: input.message || null,
-      accessToken: makeAccessToken(),
-    },
-  });
+  // Unlike a contact message, a booking cannot be salvaged by emailing it:
+  // the reference, the seat hold and the access token only mean anything once
+  // the row exists. So fail honestly rather than appearing to take a booking
+  // that was never recorded.
+  let enrollment;
+  try {
+    enrollment = await prisma.enrollment.create({
+      data: {
+        reference: makeReference(),
+        courseId: course.id,
+        sessionId,
+        type: input.type,
+        fullName: input.fullName,
+        email: input.email.toLowerCase(),
+        phone: input.phone || null,
+        organisation: input.organisation || null,
+        jobTitle: input.jobTitle || null,
+        attendees,
+        amount,
+        // A transfer booking holds the seat until the money arrives.
+        status: "PENDING",
+        holdExpiresAt: holdExpiry(),
+        paymentMethod: "BANK_TRANSFER",
+        message: input.message || null,
+        accessToken: makeAccessToken(),
+      },
+    });
+  } catch (error) {
+    console.error("[checkout] could not create the booking — see /admin/health", error);
+    return NextResponse.json(
+      { error: "We could not save your booking just now. Please try again in a moment." },
+      { status: 503 },
+    );
+  }
 
   await sendBankTransferInstructions(enrollment.id);
 
