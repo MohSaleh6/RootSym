@@ -100,7 +100,7 @@ export async function PATCH(request: Request, { params }: Params) {
           name: enrollment.fullName,
           courseTitle: enrollment.course.title,
           reference: enrollment.reference,
-          accessUrl: accessUrl(token),
+          accessUrl: await accessUrl(token),
         }),
       });
       return NextResponse.json({ ok: true, accessToken: token });
@@ -114,7 +114,7 @@ export async function PATCH(request: Request, { params }: Params) {
           name: enrollment.fullName,
           courseTitle: enrollment.course.title,
           reference: enrollment.reference,
-          accessUrl: accessUrl(enrollment.accessToken),
+          accessUrl: await accessUrl(enrollment.accessToken),
         }),
       });
       break;

@@ -118,8 +118,8 @@ export async function POST(request: Request) {
           },
         },
       ],
-      success_url: `${siteUrl()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl()}/checkout/${course.slug}?cancelled=1`,
+      success_url: `${await siteUrl()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${await siteUrl()}/checkout/${course.slug}?cancelled=1`,
     });
 
     await prisma.enrollment.update({

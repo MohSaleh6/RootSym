@@ -84,9 +84,14 @@ page instead.
 
 **Cloudflare dashboard → Workers & Pages → rootsym → Settings → Domains &
 Routes → Add custom domain.** If the domain's DNS is already on Cloudflare
-this is instant and the certificate is automatic. Then update
-`NEXT_PUBLIC_SITE_URL` in `wrangler.jsonc` and redeploy, so joining links are
-built from the real domain.
+this is instant and the certificate is automatic.
+
+**That is the whole job — there is nothing to change in the code.** Every
+customer-facing link (joining links, payment pages, the URLs in emails) and
+every canonical and Open Graph URL is built from the host on the incoming
+request, so they follow the new domain the moment it starts serving traffic.
+`NEXT_PUBLIC_SITE_URL` is only a fallback for code that runs outside a
+request; updating it is tidy but not required.
 
 ---
 

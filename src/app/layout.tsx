@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Cormorant_Garamond, Inter, IBM_Plex_Sans_Arabic } from "next/font/google";
 import { LocaleProvider } from "@/i18n/provider";
 import "./globals.css";
@@ -23,9 +24,30 @@ const arabic = IBM_Plex_Sans_Arabic({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+/**
+ * Resolved per request so that canonical and Open Graph URLs follow whatever
+ * domain the visitor used. Attaching a custom domain then needs no rebuild.
+ */
+async function resolveSiteUrl(): Promise<string> {
+  try {
+    const requestHeaders = await headers();
+    const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+    if (host) {
+      const proto =
+        requestHeaders.get("x-forwarded-proto") ??
+        (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+      return `${proto}://${host}`;
+    }
+  } catch {
+    // Not inside a request — fall back to the configured URL.
+  }
+  return (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+}
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const siteUrl = await resolveSiteUrl();
+
+  return {
   metadataBase: new URL(siteUrl),
   title: {
     default: "RootSym — Root Cause Analysis & Systematic Actions",
@@ -52,17 +74,20 @@ export const metadata: Metadata = {
     description:
       "Stop treating symptoms. Start removing roots. Live eight-hour RCA workshops by Rand Saleh.",
     url: siteUrl,
+    images: [{ url: "/brand/rootsym-logo.jpg", width: 1600, height: 900, alt: "RootSym" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "RootSym — Root Cause Analysis & Systematic Actions",
     description: "Live eight-hour RCA workshops by Rand Saleh.",
+    images: ["/brand/rootsym-logo.jpg"],
   },
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
   },
   robots: { index: true, follow: true },
-};
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#0b2a36",

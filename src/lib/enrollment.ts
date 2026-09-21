@@ -1,19 +1,41 @@
 import "server-only";
+import { headers } from "next/headers";
 import { prisma } from "./prisma";
 import { formatJod } from "./money";
 import { accessEmail, adminAlertEmail, bankTransferEmail, sendMail } from "./mail";
 import { HOLD_HOURS, getPaymentDetails, paymentRows } from "./payments";
 
-export function siteUrl(): string {
+/**
+ * The origin to build customer-facing links from.
+ *
+ * Read from the incoming request first, so the joining links and payment
+ * pages we email always point at whatever domain the visitor actually used.
+ * That means attaching a custom domain needs no rebuild and no config change
+ * — links follow the domain on their own. NEXT_PUBLIC_SITE_URL is only the
+ * fallback for code paths that run outside a request.
+ */
+export async function siteUrl(): Promise<string> {
+  try {
+    const requestHeaders = await headers();
+    const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+    if (host) {
+      const proto =
+        requestHeaders.get("x-forwarded-proto") ??
+        (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+      return `${proto}://${host}`;
+    }
+  } catch {
+    // Not inside a request — fall back to the configured URL.
+  }
   return (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 }
 
-export function accessUrl(token: string): string {
-  return `${siteUrl()}/access/${token}`;
+export async function accessUrl(token: string): Promise<string> {
+  return `${await siteUrl()}/access/${token}`;
 }
 
-export function confirmUrl(token: string): string {
-  return `${siteUrl()}/checkout/confirm/${token}`;
+export async function confirmUrl(token: string): Promise<string> {
+  return `${await siteUrl()}/checkout/confirm/${token}`;
 }
 
 export async function getSetting(key: string, fallback = ""): Promise<string> {
@@ -70,7 +92,7 @@ export async function confirmEnrollmentPaid(
       name: enrollment.fullName,
       courseTitle: enrollment.course.title,
       reference: enrollment.reference,
-      accessUrl: accessUrl(enrollment.accessToken),
+      accessUrl: await accessUrl(enrollment.accessToken),
       sessionLine: sessionLine(enrollment.session?.startsAt, enrollment.session?.timezone),
     }),
   });
@@ -109,7 +131,7 @@ export async function sendBankTransferInstructions(enrollmentId: string): Promis
       amount: formatJod(enrollment.amount),
       rows,
       notes,
-      confirmUrl: confirmUrl(enrollment.accessToken),
+      confirmUrl: await confirmUrl(enrollment.accessToken),
       holdHours: HOLD_HOURS,
     }),
   });

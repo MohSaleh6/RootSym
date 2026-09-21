@@ -46,3 +46,4 @@ yarn-error.log*
 .open-next
 .wrangler
 .dev.vars
+.env.production.local

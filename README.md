@@ -86,6 +86,14 @@ Useful scripts:
 
 ## Deploying
 
+```bash
+cp .env.production.example .env.production.local   # fill it in
+bash scripts/deploy-cloudflare.sh
+```
+
+Adding a custom domain later needs no code change: links and metadata are
+built from the request host, so they follow whatever domain serves the site.
+
 See **[docs/DEPLOY.md](docs/DEPLOY.md)** for the full walkthrough: Neon,
 Vercel, the custom domain, Stripe keys and the webhook, and Resend.
 

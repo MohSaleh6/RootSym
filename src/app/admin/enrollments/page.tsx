@@ -15,7 +15,7 @@ export default async function AdminEnrollmentsPage() {
     },
   });
 
-  const base = siteUrl();
+  const base = await siteUrl();
   const dateFmt = new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
