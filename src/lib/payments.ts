@@ -87,3 +87,18 @@ export function paymentRows(details: PaymentDetails): PaymentRow[] {
 export function holdExpiry(from: Date = new Date()): Date {
   return new Date(from.getTime() + HOLD_HOURS * 3600_000);
 }
+
+/**
+ * Whether the site can take a card online.
+ *
+ * It cannot, today: Stripe does not onboard merchants based in Jordan, and
+ * the local gateways all want a merchant-of-record arrangement first. Until
+ * one is in place every booking is a CliQ or bank transfer that Rand confirms
+ * by hand from the admin panel.
+ *
+ * When a gateway does arrive, this is the single switch the UI reads — see
+ * docs/PAYMENTS.md for the rest of the wiring.
+ */
+export function cardPaymentsEnabled(): boolean {
+  return false;
+}

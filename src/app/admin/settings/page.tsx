@@ -1,6 +1,5 @@
 import { CircleCheck, CircleX, Info } from "lucide-react";
-import { getPaymentDetails, hasPaymentDetails } from "@/lib/payments";
-import { stripeEnabled } from "@/lib/stripe";
+import { cardPaymentsEnabled, getPaymentDetails, hasPaymentDetails } from "@/lib/payments";
 import { AdminTitle, Card } from "../ui";
 import SettingsForm, { type PaymentFormValue } from "./SettingsForm";
 
@@ -79,7 +78,7 @@ export default async function AdminSettingsPage() {
           ))}
         </ul>
 
-        {!stripeEnabled() && (
+        {!cardPaymentsEnabled() && (
           <p className="mt-6 flex items-start gap-2.5 rounded-xl border border-dune bg-cream px-4 py-3 text-[0.8rem] leading-relaxed text-slate-ink">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-teal" strokeWidth={1.9} />
             Card payments are off. Stripe does not accept merchants based in Jordan, so the site

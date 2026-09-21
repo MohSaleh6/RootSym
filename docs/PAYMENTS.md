@@ -80,9 +80,14 @@ Adding a provider touches three places and nothing else:
 
 | File | What to add |
 |---|---|
-| `src/lib/stripe.ts` | A sibling module, e.g. `src/lib/paytabs.ts`, exposing "is it configured?" and "create a hosted payment session" |
-| `src/app/api/checkout/route.ts` | One more branch alongside the existing `useStripe` branch |
+| `src/lib/<provider>.ts` | A new module exposing "is it configured?" and "create a hosted payment session" |
+| `src/lib/payments.ts` | Make `cardPaymentsEnabled()` return that module's "is it configured?" — the checkout form and the admin settings page both read this one switch |
+| `src/app/api/checkout/route.ts` | A branch before the transfer path: when the buyer asked for a card and `cardPaymentsEnabled()`, create the session and answer `{ url }` instead of `{ redirect }` |
 | `src/app/api/<provider>/webhook/route.ts` | Verify the signature, then call `confirmEnrollmentPaid(enrollmentId)` |
+
+The checkout form already renders the card/transfer chooser whenever
+`cardPaymentsEnabled()` is true, and already follows a `url` in the response,
+so the storefront needs no changes.
 
 `confirmEnrollmentPaid` already does everything downstream: marks the booking
 paid, emails the single-use joining link, and notifies you. Seat holds,

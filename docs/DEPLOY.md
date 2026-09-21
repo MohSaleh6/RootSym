@@ -60,10 +60,17 @@ and pick the branch you deploy from.
 `prisma generate` and `prisma migrate deploy` happen on their own — there is
 nothing to chain in front of it.
 
-Add the variables from the secrets list above in the dashboard. `DATABASE_URL`
-is needed **both** at build time (for the migration) and at runtime (for
-queries), so if the UI separates build variables from Worker secrets, add it
-in both. Every push to that branch then deploys automatically.
+Cloudflare keeps two separate lists and they are not interchangeable:
+
+* **Settings → Build → Variables** — read while the build runs. `DATABASE_URL`
+  must be here, because the build applies migrations.
+* **Settings → Variables and Secrets** — read by the deployed Worker. Every
+  key the app needs at runtime belongs here, added as a **Secret**, not a
+  Variable: plain variables are overwritten from `wrangler.jsonc` on the next
+  deploy, and secrets are not.
+
+`DATABASE_URL` therefore goes in **both** lists. Every push to that branch then
+deploys automatically.
 
 ## 3. The schema and the first data
 
@@ -75,9 +82,21 @@ For the very first deploy against an empty database, also set
 workshops, two open cohorts and the payment settings. Set it back to `false`
 afterwards. The seed never overwrites a row that already exists.
 
-If the machine you are building on cannot reach the database, set
+Migrations run against the **direct** database host, not the pooled one.
+Neon's pooled host puts PgBouncer in transaction mode in front of Postgres,
+which is right for the app — a Worker isolate opens a connection per request —
+but wrong for `prisma migrate`, which needs one session that can hold an
+advisory lock across several statements. `scripts/migrate.mjs` derives the
+direct host from `DATABASE_URL` by dropping `-pooler`, drops the
+`channel_binding` parameter that Prisma's migration engine rejects, and falls
+back to `DATABASE_URL` as given if the direct host does not answer. Set
+`DIRECT_DATABASE_URL` only if your provider names its two hosts some other way.
+
+If the machine you are building on cannot reach the database at all, set
 `SKIP_MIGRATE=true` for that build and run `npm run db:migrate` separately
-from somewhere that can.
+from somewhere that can. It is meant as a temporary measure: with it set, a
+deploy can ship code expecting a column the database does not have. Remove it
+once the builder can reach the database.
 
 ## 4. Payment details
 

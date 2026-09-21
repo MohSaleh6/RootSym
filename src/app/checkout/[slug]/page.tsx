@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCourse } from "@/lib/courses";
-import { stripeEnabled } from "@/lib/stripe";
+import { cardPaymentsEnabled } from "@/lib/payments";
 import SiteShell from "@/components/SiteShell";
 import CheckoutForm from "./CheckoutForm";
 
@@ -20,7 +20,7 @@ export default async function CheckoutPage({ params }: Params) {
   return (
     <SiteShell overDark={false}>
       <Suspense fallback={<div className="min-h-screen bg-cream" />}>
-        <CheckoutForm course={course} stripeReady={stripeEnabled()} />
+        <CheckoutForm course={course} cardReady={cardPaymentsEnabled()} />
       </Suspense>
     </SiteShell>
   );

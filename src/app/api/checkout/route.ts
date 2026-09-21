@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkoutSchema } from "@/lib/validation";
 import { makeAccessToken, makeReference } from "@/lib/tokens";
-import { getStripe, stripeCurrency, stripeEnabled, toStripeAmount } from "@/lib/stripe";
-import { sendBankTransferInstructions, siteUrl } from "@/lib/enrollment";
-import { holdExpiry } from "@/lib/payments";
+import { sendBankTransferInstructions } from "@/lib/enrollment";
+import { cardPaymentsEnabled, holdExpiry } from "@/lib/payments";
 
 export const runtime = "nodejs";
 
@@ -55,9 +54,10 @@ export async function POST(request: Request) {
     }
   }
 
-  const stripeRequested = input.paymentMethod === "STRIPE";
-  const useStripe = stripeRequested && stripeEnabled();
-  const method = useStripe ? "STRIPE" : "BANK_TRANSFER";
+  // Every booking is a transfer until a gateway that serves Jordan is wired
+  // up; the form already offers nothing else, but a client could still ask for
+  // a card, so answer honestly that it fell back.
+  const cardRequested = input.paymentMethod === "STRIPE" && !cardPaymentsEnabled();
 
   const enrollment = await prisma.enrollment.create({
     data: {
@@ -74,72 +74,19 @@ export async function POST(request: Request) {
       amount,
       // A transfer booking holds the seat until the money arrives.
       status: "PENDING",
-      holdExpiresAt: method === "BANK_TRANSFER" ? holdExpiry() : null,
-      paymentMethod: method,
+      holdExpiresAt: holdExpiry(),
+      paymentMethod: "BANK_TRANSFER",
       message: input.message || null,
       accessToken: makeAccessToken(),
     },
   });
 
-  if (method === "BANK_TRANSFER") {
-    await sendBankTransferInstructions(enrollment.id);
-    return NextResponse.json({
-      mode: "transfer",
-      reference: enrollment.reference,
-      redirect: `/checkout/confirm/${enrollment.accessToken}`,
-      fellBack: stripeRequested,
-    });
-  }
+  await sendBankTransferInstructions(enrollment.id);
 
-  const stripe = getStripe();
-  if (!stripe) {
-    return NextResponse.json({ error: "Card payment is not configured." }, { status: 500 });
-  }
-
-  try {
-    const checkout = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: enrollment.email,
-      client_reference_id: enrollment.id,
-      metadata: { enrollmentId: enrollment.id, reference: enrollment.reference },
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: stripeCurrency(),
-            unit_amount: toStripeAmount(amount),
-            product_data: {
-              name: course.title,
-              description:
-                input.type === "COMPANY"
-                  ? `Private company room — up to ${course.maxAttendees} attendees`
-                  : `${attendees} individual seat${attendees > 1 ? "s" : ""}`,
-            },
-          },
-        },
-      ],
-      success_url: `${await siteUrl()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${await siteUrl()}/checkout/${course.slug}?cancelled=1`,
-    });
-
-    await prisma.enrollment.update({
-      where: { id: enrollment.id },
-      data: { stripeSessionId: checkout.id },
-    });
-
-    return NextResponse.json({ mode: "stripe", url: checkout.url });
-  } catch (error) {
-    console.error("[checkout] Stripe session failed", error);
-    await prisma.enrollment.update({
-      where: { id: enrollment.id },
-      data: { paymentMethod: "BANK_TRANSFER", holdExpiresAt: holdExpiry() },
-    });
-    await sendBankTransferInstructions(enrollment.id);
-    return NextResponse.json({
-      mode: "transfer",
-      reference: enrollment.reference,
-      redirect: `/checkout/confirm/${enrollment.accessToken}`,
-      fellBack: true,
-    });
-  }
+  return NextResponse.json({
+    mode: "transfer",
+    reference: enrollment.reference,
+    redirect: `/checkout/confirm/${enrollment.accessToken}`,
+    fellBack: cardRequested,
+  });
 }

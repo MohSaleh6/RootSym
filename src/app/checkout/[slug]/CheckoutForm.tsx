@@ -20,9 +20,9 @@ import { formatDateTime } from "@/lib/datetime";
 import type { CourseDTO } from "@/lib/courses";
 import Reveal from "@/components/Reveal";
 
-type Props = { course: CourseDTO; stripeReady: boolean };
+type Props = { course: CourseDTO; cardReady: boolean };
 
-export default function CheckoutForm({ course, stripeReady }: Props) {
+export default function CheckoutForm({ course, cardReady }: Props) {
   const { t, pick, fill, locale } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
@@ -31,7 +31,7 @@ export default function CheckoutForm({ course, stripeReady }: Props) {
   const [type, setType] = useState<"INDIVIDUAL" | "COMPANY">(initialType);
   const [attendees, setAttendees] = useState(initialType === "COMPANY" ? course.maxAttendees : 1);
   const [method, setMethod] = useState<"STRIPE" | "BANK_TRANSFER">(
-    stripeReady ? "STRIPE" : "BANK_TRANSFER",
+    cardReady ? "STRIPE" : "BANK_TRANSFER",
   );
   const [sessionId, setSessionId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -83,7 +83,9 @@ export default function CheckoutForm({ course, stripeReady }: Props) {
         setBusy(false);
         return;
       }
-      if (data.mode === "stripe" && data.url) {
+      // A hosted gateway would answer with a URL to send the buyer to; today
+      // every booking answers with the transfer page instead.
+      if (data.url) {
         window.location.assign(data.url);
         return;
       }
@@ -262,7 +264,7 @@ export default function CheckoutForm({ course, stripeReady }: Props) {
               <fieldset className="rounded-[1.4rem] border border-dune bg-parchment p-6">
                 <legend className="field-label !mb-0 px-2">{t.checkout.payment}</legend>
 
-                {stripeReady ? (
+                {cardReady ? (
                   <div className="mt-4 space-y-3">
                     {(
                       [

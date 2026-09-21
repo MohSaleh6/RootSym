@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { getStripe } from "@/lib/stripe";
 import { redirect } from "next/navigation";
-import { confirmEnrollmentPaid } from "@/lib/enrollment";
 import SiteShell from "@/components/SiteShell";
 import SuccessView from "./SuccessView";
 
@@ -10,47 +8,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Booking confirmed", robots: { index: false } };
 
-type Search = { params?: never; searchParams: Promise<{ session_id?: string; ref?: string }> };
+type Search = { params?: never; searchParams: Promise<{ ref?: string }> };
 
 export default async function SuccessPage({ searchParams }: Search) {
-  const { session_id: stripeSessionId, ref } = await searchParams;
+  const { ref } = await searchParams;
 
-  let enrollment = null;
-
-  if (stripeSessionId) {
-    enrollment = await prisma.enrollment.findUnique({
-      where: { stripeSessionId },
-      include: { course: true },
-    });
-
-    // The webhook is the source of truth, but it may not have landed yet —
-    // verify straight with Stripe so the customer is never left waiting.
-    if (enrollment && enrollment.status !== "PAID") {
-      const stripe = getStripe();
-      if (stripe) {
-        try {
-          const session = await stripe.checkout.sessions.retrieve(stripeSessionId);
-          if (session.payment_status === "paid") {
-            await confirmEnrollmentPaid(enrollment.id, {
-              stripePaymentId:
-                typeof session.payment_intent === "string" ? session.payment_intent : null,
-            });
-            enrollment = await prisma.enrollment.findUnique({
-              where: { id: enrollment.id },
-              include: { course: true },
-            });
-          }
-        } catch (error) {
-          console.error("[success] could not verify Stripe session", error);
-        }
-      }
-    }
-  } else if (ref) {
-    enrollment = await prisma.enrollment.findUnique({
-      where: { reference: ref },
-      include: { course: true },
-    });
-  }
+  const enrollment = ref
+    ? await prisma.enrollment.findUnique({ where: { reference: ref }, include: { course: true } })
+    : null;
 
   // Anything not yet paid belongs on the payment page, which carries the
   // transfer details and the "I have sent it" step.
