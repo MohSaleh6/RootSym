@@ -41,6 +41,8 @@ npx wrangler secret put ADMIN_PASSWORD
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put MAIL_FROM
 npx wrangler secret put ADMIN_NOTIFY_EMAIL
+npx wrangler secret put GOOGLE_CLIENT_ID      # optional, see section 6
+npx wrangler secret put GOOGLE_CLIENT_SECRET  # optional, see section 6
 ```
 
 `NEXT_PUBLIC_SITE_URL` is different: it is inlined into the client bundle at
@@ -112,12 +114,57 @@ Settings** and fill in the CliQ alias and bank details — see
 
 ## 5. Email
 
-Resend needs a verified domain before it will send to anyone other than the
-account owner. Until that is done, customers will not receive their payment
-details or joining links automatically — release them from the admin Bookings
-page instead.
+Resend will only deliver to the account owner's own address until a domain is
+verified. That is not a small limitation: it means a paying customer receives
+neither the payment instructions nor the joining link.
 
-## 6. The domain
+1. <https://resend.com/domains> → **Add domain**, enter the domain you send
+   from.
+2. Resend prints a set of DNS records (a DKIM `TXT`, an SPF `TXT` on a
+   subdomain, and usually a `MX` for bounce handling). Add them wherever the
+   domain's DNS lives — on Cloudflare that is **DNS → Records**. Leave the
+   proxy **off** for these; they are mail records, not web traffic.
+3. Press **Verify**. Propagation is usually minutes.
+4. Set `MAIL_FROM` to an address on that domain, e.g.
+   `RootSym <hello@example.com>`, as a runtime secret, and redeploy.
+
+Until then the site stays usable: every booking still appears in the admin
+Bookings page, and the joining link can be copied from there and sent by hand.
+
+`ADMIN_NOTIFY_EMAIL` is where the "someone just booked" alert lands. It falls
+back to `ADMIN_EMAIL` when blank.
+
+## 6. Sign in with Google (optional)
+
+Booking requires an account. People can always create one with an email and a
+password; the Google button appears only once both credentials are set, and
+nothing else changes when they are not.
+
+1. <https://console.cloud.google.com> → create (or pick) a project.
+2. **APIs & Services → OAuth consent screen.** External, fill in the app name
+   and a support email, and add the scopes `email`, `profile`, `openid`.
+   While the app is in *Testing*, only the addresses you list as test users
+   can sign in — publish it before customers arrive.
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID**,
+   type **Web application**.
+4. Under **Authorised redirect URIs** add one line per domain the site answers
+   on, exactly:
+
+   ```
+   https://rootsym.<your-subdomain>.workers.dev/api/auth/google/callback
+   https://<your-domain>/api/auth/google/callback
+   ```
+
+   The path must match character for character, `https`, no trailing slash.
+5. Copy the client ID and secret into the Worker's **runtime** secrets as
+   `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, then redeploy.
+
+Admin → Readiness confirms whether the site can see them.
+
+The redirect URI the app actually sends is built from the host of the incoming
+request, so a new domain needs a new line in that list — and nothing else.
+
+## 7. The domain
 
 **Cloudflare dashboard → Workers & Pages → rootsym → Settings → Domains &
 Routes → Add custom domain.** If the domain's DNS is already on Cloudflare
@@ -131,6 +178,23 @@ request, so they follow the new domain the moment it starts serving traffic.
 request; updating it is tidy but not required.
 
 ---
+
+## Accounts and sessions
+
+Two separate cookies, both signed with `AUTH_SECRET`:
+
+| Cookie | Who | Life | Guards |
+|---|---|---|---|
+| `rootsym_admin` | Rand | 12 hours | `/admin`, `/api/admin` |
+| `rootsym_user` | customers | 30 days | `/checkout`, `/account`, `/api/checkout` |
+
+Each verifier insists on its own role claim, so neither cookie opens the
+other's pages. `/access/<token>` and `/checkout/confirm/<token>` are
+deliberately *not* behind a session — they are opened from a link in an email,
+often on a different device, and the token is the proof.
+
+Rotating `AUTH_SECRET` signs everyone out, customers included. That is the
+right move if it ever leaks, and a nuisance otherwise.
 
 ## A note on Prisma and Workers
 
@@ -157,4 +221,7 @@ are easy to regress — leave them alone.
 2. **Settings** — enter the real CliQ alias, bank name, account name and IBAN.
 3. **Live dates** — schedule the first RCA cohort and paste its Microsoft Teams link.
 4. **Workshops** — check the pricing, add a cover image, publish the drafts when ready.
-5. Place a test booking and walk it through: hold → report a transfer → approve → open the joining link.
+5. Create a customer account on the public site, place a test booking, and
+   walk it through end to end: seat held → report the transfer (or message
+   WhatsApp) → approve it in **Bookings** → open the joining link once. The
+   link is single-use by design, so opening it is part of the test.
