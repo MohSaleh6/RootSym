@@ -4,6 +4,7 @@ import { CircleAlert, CircleCheck, CircleX, TriangleAlert } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getPaymentDetails, hasPaymentDetails } from "@/lib/payments";
 import { googleEnabled } from "@/lib/google-oauth";
+import { describeError } from "@/lib/errors";
 import { AdminTitle, Card } from "../ui";
 
 export const dynamic = "force-dynamic";
@@ -33,36 +34,6 @@ type Check = {
   fix?: string;
   href?: string;
 };
-
-/**
- * A readable one-liner for whatever the driver threw, with anything
- * password-shaped removed.
- *
- * Not every rejection is an Error: Neon's WebSocket driver rejects with an
- * ErrorEvent, whose String() is the useless "[object ErrorEvent]", so unwrap
- * the shapes that actually turn up before giving up on one.
- */
-function safeMessage(error: unknown): string {
-  const seen = new Set<unknown>();
-
-  function unwrap(value: unknown, depth = 0): string | null {
-    if (value == null || depth > 4 || seen.has(value)) return null;
-    if (typeof value === "string") return value.trim() || null;
-    if (typeof value !== "object") return String(value);
-    seen.add(value);
-
-    const record = value as Record<string, unknown>;
-    for (const key of ["message", "error", "cause", "reason"]) {
-      const nested = unwrap(record[key], depth + 1);
-      if (nested) return nested;
-    }
-    // An ErrorEvent that carries nothing but its type still names the failure.
-    return typeof record.type === "string" ? `Connection ${record.type}` : null;
-  }
-
-  const raw = unwrap(error) ?? "The database did not answer.";
-  return raw.replace(/\/\/[^@\s]*@/g, "//***@").slice(0, 300);
-}
 
 /** The database host, so a worker pointed at the wrong database is obvious. */
 function databaseHost(): string | null {
@@ -103,7 +74,7 @@ async function databaseCheck(): Promise<{ check: Check; up: boolean }> {
       check: {
         label: "Database",
         level: "blocked",
-        detail: `${host ? `${host}: ` : ""}${safeMessage(error)}`,
+        detail: `${host ? `${host}: ` : ""}${describeError(error)}`,
         fix: local
           ? "DATABASE_URL points at this machine, which a deployed worker cannot reach. Set it to the pooled Neon connection string."
           : "Check that DATABASE_URL is the pooled Neon connection string and that the Neon project is not suspended.",

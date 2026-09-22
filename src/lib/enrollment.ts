@@ -77,6 +77,9 @@ export async function confirmEnrollmentPaid(
   if (!enrollment) return "missing";
   if (enrollment.status === "PAID") return "already";
 
+  // The seat is confirmed by this write and nothing else. Everything below is
+  // notification: if it fails, the booking is still paid, and telling the
+  // admin the approval failed would be a lie that invites a second attempt.
   await prisma.enrollment.update({
     where: { id: enrollment.id },
     data: {
@@ -86,26 +89,30 @@ export async function confirmEnrollmentPaid(
     },
   });
 
-  await sendMail({
-    to: enrollment.email,
-    subject: `Your seat is confirmed — ${enrollment.course.title}`,
-    html: accessEmail({
-      name: enrollment.fullName,
-      courseTitle: enrollment.course.title,
-      reference: enrollment.reference,
-      accessUrl: await accessUrl(enrollment.accessToken),
-      sessionLine: sessionLine(enrollment.session?.startsAt, enrollment.session?.timezone),
-    }),
-  });
+  try {
+    await sendMail({
+      to: enrollment.email,
+      subject: `Your seat is confirmed — ${enrollment.course.title}`,
+      html: accessEmail({
+        name: enrollment.fullName,
+        courseTitle: enrollment.course.title,
+        reference: enrollment.reference,
+        accessUrl: await accessUrl(enrollment.accessToken),
+        sessionLine: sessionLine(enrollment.session?.startsAt, enrollment.session?.timezone),
+      }),
+    });
 
-  await notifyAdmin(`Payment received — ${enrollment.reference}`, [
-    `Course: ${enrollment.course.title}`,
-    `Name: ${enrollment.fullName} <${enrollment.email}>`,
-    `Type: ${enrollment.type}`,
-    `Attendees: ${enrollment.attendees}`,
-    `Amount: ${formatJod(enrollment.amount)}`,
-    `Method: ${enrollment.paymentMethod}`,
-  ]);
+    await notifyAdmin(`Payment received — ${enrollment.reference}`, [
+      `Course: ${enrollment.course.title}`,
+      `Name: ${enrollment.fullName} <${enrollment.email}>`,
+      `Type: ${enrollment.type}`,
+      `Attendees: ${enrollment.attendees}`,
+      `Amount: ${formatJod(enrollment.amount)}`,
+      `Method: ${enrollment.paymentMethod}`,
+    ]);
+  } catch (error) {
+    console.error("[confirm] the seat is paid but the emails did not go out", error);
+  }
 
   return "confirmed";
 }

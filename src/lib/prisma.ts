@@ -47,19 +47,27 @@ function isConnectionFailure(error: unknown): boolean {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function withRetry<T>(run: () => Promise<T>): Promise<T> {
-  let lastError: unknown;
+  let firstError: unknown;
+  let attempted = false;
 
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
     try {
       return await run();
     } catch (error) {
-      if (!isConnectionFailure(error) || attempt === RETRY_DELAYS_MS.length) throw error;
-      lastError = error;
+      // Whatever went wrong the first time is the truth. A later attempt can
+      // fail differently — re-running a query Prisma has already settled is
+      // our doing, not the database's — and reporting that instead would send
+      // whoever reads the log chasing our retry rather than their bug.
+      if (!attempted) {
+        firstError = error;
+        attempted = true;
+      }
+      if (!isConnectionFailure(error) || attempt === RETRY_DELAYS_MS.length) throw firstError;
       await sleep(RETRY_DELAYS_MS[attempt]);
     }
   }
 
-  throw lastError;
+  throw firstError;
 }
 
 function createClient() {
