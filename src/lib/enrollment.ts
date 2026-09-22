@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { formatJod } from "./money";
 import { accessEmail, adminAlertEmail, bankTransferEmail, sendMail } from "./mail";
 import { HOLD_HOURS, getPaymentDetails, paymentRows } from "./payments";
+import { siteConfig, whatsappLink } from "@/content/profile";
 
 /**
  * The origin to build customer-facing links from.
@@ -133,15 +134,28 @@ export async function sendBankTransferInstructions(enrollmentId: string): Promis
       notes,
       confirmUrl: await confirmUrl(enrollment.accessToken),
       holdHours: HOLD_HOURS,
+      // Pre-filled so the message that reaches Rand already carries the
+      // reference she needs to find the booking.
+      whatsappUrl: whatsappLink(
+        `Hello Rand, I have paid for my RootSym seat. Booking reference ${enrollment.reference}.`,
+      ),
+      whatsappNumber: siteConfig.phone,
     }),
   });
 
-  await notifyAdmin(`Seat held, awaiting transfer — ${enrollment.reference}`, [
+  await notifyAdmin(`New booking — ${enrollment.reference}`, [
     `Course: ${enrollment.course.title}`,
     `Name: ${enrollment.fullName} <${enrollment.email}>`,
+    enrollment.phone ? `Phone: ${enrollment.phone}` : "",
+    enrollment.organisation ? `Organisation: ${enrollment.organisation}` : "",
+    `Type: ${enrollment.type}`,
+    `Attendees: ${enrollment.attendees}`,
     `Amount: ${formatJod(enrollment.amount)}`,
-    `Held until: ${enrollment.holdExpiresAt?.toISOString() ?? "—"}`,
-  ]);
+    `Seat held until: ${enrollment.holdExpiresAt?.toISOString() ?? "—"}`,
+    "",
+    "They have been asked to pay and then message you on WhatsApp.",
+    `Confirm the seat from the admin panel: ${await siteUrl()}/admin/enrollments`,
+  ].filter(Boolean));
 }
 
 /** The customer has told us the money is on its way. */

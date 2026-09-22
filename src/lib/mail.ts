@@ -83,6 +83,8 @@ export function bankTransferEmail(opts: {
   notes: string;
   confirmUrl: string;
   holdHours: number;
+  whatsappUrl: string;
+  whatsappNumber: string;
 }) {
   const detailRows = opts.rows
     .map(
@@ -109,11 +111,16 @@ export function bankTransferEmail(opts: {
 
     ${opts.notes ? `<p style="margin:0 0 18px;white-space:pre-line;color:#5d6f77;font-size:13px;">${escapeHtml(opts.notes)}</p>` : ""}
 
-    <p style="margin:0 0 20px;">Once you have sent it, tell us on the page below and we will confirm your seat and release your joining link.</p>
-    <p style="margin:0 0 24px;">
-      <a href="${opts.confirmUrl}" style="display:inline-block;background:#c9a227;color:#0b2a36;text-decoration:none;font-weight:700;padding:14px 26px;border-radius:999px;">I have sent the transfer</a>
+    <p style="margin:0 0 20px;"><strong>Once you have paid, send Rand a message on WhatsApp</strong> with your reference. She confirms the seat by hand and your joining link is released straight away.</p>
+    <p style="margin:0 0 20px;">
+      <a href="${opts.whatsappUrl}" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-weight:700;padding:14px 26px;border-radius:999px;">Message Rand on WhatsApp</a>
     </p>
-    <p style="margin:0;color:#5d6f77;font-size:13px;">That page also keeps the payment details, so you can come back to it any time.</p>
+    <p style="margin:0 0 24px;color:#5d6f77;font-size:13px;">Or save the number: <span style="direction:ltr;unicode-bidi:embed;font-weight:600;color:#16323d;">${escapeHtml(opts.whatsappNumber)}</span></p>
+
+    <p style="margin:0 0 12px;">You can also confirm on the booking page, which keeps the payment details for whenever you come back to them:</p>
+    <p style="margin:0 0 8px;">
+      <a href="${opts.confirmUrl}" style="display:inline-block;border:1px solid #c9a227;color:#0b2a36;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px;">I have sent the transfer</a>
+    </p>
   `);
 }
 

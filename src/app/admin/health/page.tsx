@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { CircleAlert, CircleCheck, CircleX, TriangleAlert } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getPaymentDetails, hasPaymentDetails } from "@/lib/payments";
+import { googleEnabled } from "@/lib/google-oauth";
 import { AdminTitle, Card } from "../ui";
 
 export const dynamic = "force-dynamic";
@@ -155,12 +156,23 @@ function emailCheck(): Check {
   return { label: "Email", level: "ok", detail: from ? `Sending as ${from}.` : "Resend is configured." };
 }
 
+function googleCheck(): Check {
+  return googleEnabled()
+    ? { label: "Sign in with Google", level: "ok", detail: "Configured." }
+    : {
+        label: "Sign in with Google",
+        level: "warn",
+        detail: "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are not set, so the Google button is hidden.",
+        fix: "Everything else works: people can still create an account with an email and a password.",
+      };
+}
+
 export default async function HealthPage() {
   const requestHeaders = await headers();
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "unknown";
 
   const { check: database, up } = await databaseCheck();
-  const checks: Check[] = [database, adminCheck(), emailCheck()];
+  const checks: Check[] = [database, adminCheck(), emailCheck(), googleCheck()];
 
   if (up) {
     const [published, cohorts, awaiting, details] = await Promise.all([

@@ -20,9 +20,17 @@ import { formatDateTime } from "@/lib/datetime";
 import type { CourseDTO } from "@/lib/courses";
 import Reveal from "@/components/Reveal";
 
-type Props = { course: CourseDTO; cardReady: boolean };
+export type Account = {
+  name: string;
+  email: string;
+  phone: string;
+  organisation: string;
+  jobTitle: string;
+};
 
-export default function CheckoutForm({ course, cardReady }: Props) {
+type Props = { course: CourseDTO; cardReady: boolean; account: Account | null };
+
+export default function CheckoutForm({ course, cardReady, account }: Props) {
   const { t, pick, fill, locale } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
@@ -186,15 +194,40 @@ export default function CheckoutForm({ course, cardReady }: Props) {
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <label className="sm:col-span-2">
                     <span className="field-label">{t.checkout.fullName} *</span>
-                    <input name="fullName" required maxLength={120} className="field" autoComplete="name" />
+                    <input
+                      name="fullName"
+                      required
+                      maxLength={120}
+                      defaultValue={account?.name ?? ""}
+                      className="field"
+                      autoComplete="name"
+                    />
                   </label>
                   <label>
                     <span className="field-label">{t.checkout.email} *</span>
-                    <input name="email" type="email" required className="field" autoComplete="email" dir="ltr" />
+                    {/* The account's address, not a free field: the joining
+                        link is issued against it, and letting the two drift
+                        apart is how a paid seat ends up unreachable. */}
+                    <input
+                      name="email"
+                      type="email"
+                      required
+                      readOnly={Boolean(account)}
+                      defaultValue={account?.email ?? ""}
+                      className={`field ${account ? "cursor-not-allowed opacity-75" : ""}`}
+                      autoComplete="email"
+                      dir="ltr"
+                    />
                   </label>
                   <label>
                     <span className="field-label">{t.checkout.phone}</span>
-                    <input name="phone" className="field" autoComplete="tel" dir="ltr" />
+                    <input
+                      name="phone"
+                      defaultValue={account?.phone ?? ""}
+                      className="field"
+                      autoComplete="tel"
+                      dir="ltr"
+                    />
                   </label>
                   <label>
                     <span className="field-label">
@@ -204,13 +237,19 @@ export default function CheckoutForm({ course, cardReady }: Props) {
                     <input
                       name="organisation"
                       required={type === "COMPANY"}
+                      defaultValue={account?.organisation ?? ""}
                       className="field"
                       autoComplete="organization"
                     />
                   </label>
                   <label>
                     <span className="field-label">{t.checkout.jobTitle}</span>
-                    <input name="jobTitle" className="field" autoComplete="organization-title" />
+                    <input
+                      name="jobTitle"
+                      defaultValue={account?.jobTitle ?? ""}
+                      className="field"
+                      autoComplete="organization-title"
+                    />
                   </label>
 
                   <label>

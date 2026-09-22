@@ -3,12 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, X, ArrowUpRight } from "lucide-react";
+import { Menu, X, ArrowUpRight, CircleUser } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import LanguageToggle from "./LanguageToggle";
 import { LogoMark } from "./Logo";
 
-export default function SiteHeader({ overDark = false }: { overDark?: boolean }) {
+export default function SiteHeader({
+  overDark = false,
+  signedIn = false,
+  name = null,
+}: {
+  overDark?: boolean;
+  signedIn?: boolean;
+  name?: string | null;
+}) {
   const { t } = useI18n();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
@@ -110,6 +118,22 @@ export default function SiteHeader({ overDark = false }: { overDark?: boolean })
 
           <div className="flex items-center gap-2.5">
             <LanguageToggle tone={light ? "dark" : "light"} />
+
+            <Link
+              href={signedIn ? "/account" : "/signin"}
+              title={signedIn ? (name ?? t.account.title) : t.auth.signIn}
+              className={`hidden h-10 items-center gap-2 rounded-full border px-4 text-[0.82rem] font-semibold transition-colors sm:inline-flex ${
+                light
+                  ? "border-sky/25 text-cream hover:border-gold hover:text-gold"
+                  : "border-abyss/15 text-abyss hover:border-gold hover:text-gold"
+              }`}
+            >
+              <CircleUser className="h-4 w-4" strokeWidth={1.8} />
+              <span className="max-w-[9rem] truncate">
+                {signedIn ? (name?.split(" ")[0] ?? t.account.title) : t.auth.signIn}
+              </span>
+            </Link>
+
             <Link
               href="/courses"
               className="btn-gold hidden !px-5 !py-2.5 !text-[0.82rem] sm:inline-flex"
@@ -163,7 +187,15 @@ export default function SiteHeader({ overDark = false }: { overDark?: boolean })
               </Link>
             ))}
           </nav>
-          <Link href="/courses" onClick={() => setOpen(false)} className="btn-gold mt-6 w-full">
+          <Link
+            href={signedIn ? "/account" : "/signin"}
+            onClick={() => setOpen(false)}
+            className="mt-5 flex items-center justify-center gap-2 rounded-full border border-dune px-6 py-3.5 text-[0.9rem] font-semibold text-abyss transition-colors hover:border-gold hover:text-gold"
+          >
+            <CircleUser className="h-4 w-4" strokeWidth={1.8} />
+            {signedIn ? (name ?? t.account.title) : t.auth.signIn}
+          </Link>
+          <Link href="/courses" onClick={() => setOpen(false)} className="btn-gold mt-3 w-full">
             {t.nav.enrol}
           </Link>
         </div>

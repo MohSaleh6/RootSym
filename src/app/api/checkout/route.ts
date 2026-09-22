@@ -4,6 +4,7 @@ import { checkoutSchema } from "@/lib/validation";
 import { makeAccessToken, makeReference } from "@/lib/tokens";
 import { sendBankTransferInstructions } from "@/lib/enrollment";
 import { cardPaymentsEnabled, holdExpiry } from "@/lib/payments";
+import { getCurrentUser } from "@/lib/user-auth";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,16 @@ export async function POST(request: Request) {
     payload = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
+
+  // Middleware already turned away anyone without a session; this reads the
+  // account itself, because the booking is addressed to it.
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: "Please sign in to reserve a seat.", signIn: "/signin" },
+      { status: 401 },
+    );
   }
 
   const parsed = checkoutSchema.safeParse(payload);
@@ -71,8 +82,11 @@ export async function POST(request: Request) {
         courseId: course.id,
         sessionId,
         type: input.type,
+        userId: user.id,
         fullName: input.fullName,
-        email: input.email.toLowerCase(),
+        // The account's address wins over whatever the form posted. The
+        // joining link is issued against it, so the two must not diverge.
+        email: user.email,
         phone: input.phone || null,
         organisation: input.organisation || null,
         jobTitle: input.jobTitle || null,

@@ -16,6 +16,34 @@ export const checkoutSchema = z.object({
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
+/**
+ * Eight characters is the floor, not the goal. A length rule is the only one
+ * that reliably helps; composition rules mostly push people towards
+ * "Password1!" and a sticky note.
+ */
+const password = z.string().min(8, "Use at least 8 characters.").max(200);
+
+export const signUpSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().email().max(200),
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  organisation: z.string().trim().max(160).optional().or(z.literal("")),
+  jobTitle: z.string().trim().max(120).optional().or(z.literal("")),
+  password,
+});
+
+export const signInSchema = z.object({
+  email: z.string().trim().email().max(200),
+  password: z.string().min(1).max(200),
+});
+
+export const profileSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  organisation: z.string().trim().max(160).optional().or(z.literal("")),
+  jobTitle: z.string().trim().max(120).optional().or(z.literal("")),
+});
+
 export const contactSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(200),

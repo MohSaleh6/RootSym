@@ -14,8 +14,20 @@ export const siteConfig = {
   location: "Amman, Jordan",
   locationAr: "عمّان، الأردن",
   linkedin: process.env.NEXT_PUBLIC_LINKEDIN_URL || "",
+  /**
+   * Where a customer confirms a transfer. wa.me wants the number in full
+   * international form with no plus and no spaces, so it is stored that way
+   * and only ever formatted for display.
+   */
+  whatsapp: (process.env.NEXT_PUBLIC_WHATSAPP || "962790811983").replace(/[^\d]/g, ""),
   maxAttendees: 15,
 };
+
+/** A WhatsApp link, optionally pre-filled with the message we want to receive. */
+export function whatsappLink(message?: string): string {
+  const base = `https://wa.me/${siteConfig.whatsapp}`;
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
+}
 
 export type ExperienceItem = {
   role: string;
