@@ -12,9 +12,57 @@ import { PrismaClient } from "@/generated/prisma/client";
  * a Neon database (a free Neon branch is the usual choice for development).
  */
 
-type Client = PrismaClient;
+/** How long to wait before each retry. Neon wakes a suspended compute in about a second. */
+const RETRY_DELAYS_MS = [250, 750, 1750];
 
-function createClient(): Client {
+/**
+ * Whether an error means the query never reached Postgres.
+ *
+ * On Neon's free plan the compute suspends after a few minutes of quiet, and
+ * the first request afterwards arrives while it is still waking up. That
+ * surfaces as a failure to open the connection — never as a result — so
+ * retrying is safe: there is no half-applied write to worry about. Anything
+ * Postgres actually answered (a unique-constraint violation, a missing row)
+ * carries a P2xxx code and must not be retried, because the answer will not
+ * change and retrying would hide a real bug.
+ */
+function isConnectionFailure(error: unknown): boolean {
+  const code = (error as { code?: unknown })?.code;
+
+  if (typeof code === "string") {
+    // P1001 unreachable · P1002 timed out · P1017 closed the connection.
+    if (code === "P1001" || code === "P1002" || code === "P1017") return true;
+    // Anything else Postgres named is an answer, not a failure to ask.
+    return false;
+  }
+
+  // The Neon driver rejects with an ErrorEvent that carries no Prisma code
+  // when the socket cannot be opened at all. A malformed query has no code
+  // either, but repeating it would only waste the visitor's time.
+  const name = (error as { name?: unknown })?.name;
+  if (typeof name === "string" && name.startsWith("PrismaClientValidation")) return false;
+  return name !== "PrismaClientKnownRequestError";
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function withRetry<T>(run: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      if (!isConnectionFailure(error) || attempt === RETRY_DELAYS_MS.length) throw error;
+      lastError = error;
+      await sleep(RETRY_DELAYS_MS[attempt]);
+    }
+  }
+
+  throw lastError;
+}
+
+function createClient() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error(
@@ -24,8 +72,14 @@ function createClient(): Client {
   // Constructing the pool performs no I/O, so this is safe at module scope
   // inside a Worker isolate.
   const adapter = new PrismaNeon({ connectionString });
-  return new PrismaClient({ adapter });
+  return new PrismaClient({ adapter }).$extends({
+    query: {
+      $allOperations: ({ args, query }) => withRetry(() => query(args)),
+    },
+  });
 }
+
+type Client = ReturnType<typeof createClient>;
 
 const globalForPrisma = globalThis as unknown as { prisma?: Client };
 
