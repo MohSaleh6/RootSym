@@ -1,4 +1,5 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { PrismaClient } from "@/generated/prisma/client";
 
 /**
@@ -89,16 +90,48 @@ function createClient() {
 
 type Client = ReturnType<typeof createClient>;
 
+/**
+ * One client per request on Workers, one per process everywhere else.
+ *
+ * The Neon pool holds open WebSockets, and a Worker may not touch an I/O
+ * object created while serving a different request: the runtime rejects it
+ * with "Cannot perform I/O on behalf of a different request" as an uncaught
+ * error, which escapes every try/catch and error boundary and surfaces as
+ * Cloudflare's Error 1101. Keeping a single client for the life of the
+ * isolate — which is what this file used to do — therefore worked for the
+ * first request after a deploy and failed for some later one.
+ *
+ * OpenNext runs every request inside its own context carrying that request's
+ * ExecutionContext, so the client is keyed on it and is dropped along with
+ * it. Under Node (next dev, next build) there is no such context and sockets
+ * are not request-bound, so a process-wide client is both allowed and
+ * cheaper.
+ */
+const perRequest = new WeakMap<object, Client>();
 const globalForPrisma = globalThis as unknown as { prisma?: Client };
 
+function requestScope(): object | null {
+  try {
+    return getCloudflareContext().ctx ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function client(): Client {
-  const existing = globalForPrisma.prisma;
-  if (existing) return existing;
-  const created = createClient();
-  // One client per isolate in production too: a Worker isolate serves many
-  // requests, and a fresh pool per request would be wasted connections.
-  globalForPrisma.prisma = created;
-  return created;
+  const scope = requestScope();
+
+  if (scope) {
+    let scoped = perRequest.get(scope);
+    if (!scoped) {
+      scoped = createClient();
+      perRequest.set(scope, scoped);
+    }
+    return scoped;
+  }
+
+  globalForPrisma.prisma ??= createClient();
+  return globalForPrisma.prisma;
 }
 
 /**

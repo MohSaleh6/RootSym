@@ -1,7 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
-import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 
 /**
@@ -90,15 +89,7 @@ export async function getCurrentUser() {
   }
 }
 
-const ROUNDS = 10; // Workers have a CPU budget; 10 is the usual web default.
-
-export function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, ROUNDS);
-}
-
-export function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
-}
+export { hashPassword, verifyPassword } from "./password";
 
 /** Emails are compared lowercase everywhere, so normalise at every entrance. */
 export function normaliseEmail(email: string): string {
