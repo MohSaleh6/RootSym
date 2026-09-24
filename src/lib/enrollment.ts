@@ -66,16 +66,26 @@ function sessionLine(startsAt: Date | null | undefined, timezone: string | undef
  * Marks an enrollment paid and emails the single-use joining link.
  * Safe to call more than once — the second call is a no-op.
  */
+export type ConfirmResult = {
+  outcome: "confirmed" | "already" | "missing";
+  /**
+   * Whether the joining link actually reached the customer. False means the
+   * seat is paid but they have not been told — until a sending domain is
+   * verified, that is every time — so the admin has to send the link herself.
+   */
+  customerEmailed: boolean;
+};
+
 export async function confirmEnrollmentPaid(
   enrollmentId: string,
   patch: { stripePaymentId?: string | null } = {},
-): Promise<"confirmed" | "already" | "missing"> {
+): Promise<ConfirmResult> {
   const enrollment = await prisma.enrollment.findUnique({
     where: { id: enrollmentId },
     include: { course: true, session: true },
   });
-  if (!enrollment) return "missing";
-  if (enrollment.status === "PAID") return "already";
+  if (!enrollment) return { outcome: "missing", customerEmailed: false };
+  if (enrollment.status === "PAID") return { outcome: "already", customerEmailed: false };
 
   // The seat is confirmed by this write and nothing else. Everything below is
   // notification: if it fails, the booking is still paid, and telling the
@@ -89,8 +99,9 @@ export async function confirmEnrollmentPaid(
     },
   });
 
+  let customerEmailed = false;
   try {
-    await sendMail({
+    customerEmailed = await sendMail({
       to: enrollment.email,
       subject: `Your seat is confirmed — ${enrollment.course.title}`,
       html: accessEmail({
@@ -114,7 +125,7 @@ export async function confirmEnrollmentPaid(
     console.error("[confirm] the seat is paid but the emails did not go out", error);
   }
 
-  return "confirmed";
+  return { outcome: "confirmed", customerEmailed };
 }
 
 export async function sendBankTransferInstructions(enrollmentId: string): Promise<void> {

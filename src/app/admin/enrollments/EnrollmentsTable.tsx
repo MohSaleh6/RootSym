@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { formatJod } from "@/lib/money";
 import { Badge } from "../ui";
+import { formatAdminDateTime } from "@/lib/datetime";
 
 export type EnrollmentRow = {
   id: string;
@@ -80,6 +81,15 @@ export default function EnrollmentsTable({ rows }: { rows: EnrollmentRow[] }) {
       window.alert(json?.error || "That action failed.");
       return;
     }
+    // The action succeeded but the customer was not told. Saying nothing here
+    // is how a paid seat ends up with nobody holding the joining link.
+    if (json?.customerEmailed === false) {
+      window.alert(
+        action === "approve"
+          ? "Seat confirmed. The confirmation email could not be sent, so the customer does not know yet. Use \"Copy link\" and send them the joining link on WhatsApp."
+          : "Done, but the email could not be sent. Use \"Copy link\" and send the joining link on WhatsApp.",
+      );
+    }
     router.refresh();
   }
 
@@ -94,13 +104,6 @@ export default function EnrollmentsTable({ rows }: { rows: EnrollmentRow[] }) {
     }
   }
 
-  const dateFmt = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
   return (
     <div className="space-y-5">
@@ -222,7 +225,7 @@ export default function EnrollmentsTable({ rows }: { rows: EnrollmentRow[] }) {
                         </div>
                         <div>
                           <dt className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-slate-ink/60">Booked</dt>
-                          <dd className="mt-1 text-abyss">{dateFmt.format(new Date(r.createdAt))}</dd>
+                          <dd className="mt-1 text-abyss">{formatAdminDateTime(r.createdAt)}</dd>
                         </div>
                         <div>
                           <dt className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-slate-ink/60">Live date</dt>
@@ -236,7 +239,7 @@ export default function EnrollmentsTable({ rows }: { rows: EnrollmentRow[] }) {
                                 new Date(r.holdExpiresAt) < new Date() ? "text-ember" : "text-abyss"
                               }`}
                             >
-                              {dateFmt.format(new Date(r.holdExpiresAt))}
+                              {formatAdminDateTime(r.holdExpiresAt)}
                               {new Date(r.holdExpiresAt) < new Date() && " — expired"}
                             </dd>
                           </div>
@@ -247,7 +250,7 @@ export default function EnrollmentsTable({ rows }: { rows: EnrollmentRow[] }) {
                             {r.accessRevoked
                               ? "revoked"
                               : r.accessOpenedAt
-                                ? `opened ${dateFmt.format(new Date(r.accessOpenedAt))}`
+                                ? `opened ${formatAdminDateTime(r.accessOpenedAt)}`
                                 : "unused"}
                             {r.accessResetCount > 0 && ` · reissued ${r.accessResetCount}×`}
                           </dd>

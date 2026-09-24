@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Save, Trash2, Video, TriangleAlert, Users } from "lucide-react";
+import { formatDateTime, toZonedInputValue, zonedLocalToUtc } from "@/lib/datetime";
 
 export type SessionRow = {
   id: string;
@@ -46,11 +47,18 @@ export default function SessionsManager({
   async function create(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    // The time Rand types is wall-clock time in the session's own timezone,
+    // not in whatever zone her device happens to be set to.
+    const startsAt = zonedLocalToUtc(draft.startsAt, draft.timezone);
+    if (Number.isNaN(startsAt.getTime())) {
+      setError("That start time or timezone is not valid.");
+      return;
+    }
     setBusy("new");
     const res = await fetch("/api/admin/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...draft, startsAt: new Date(draft.startsAt).toISOString() }),
+      body: JSON.stringify({ ...draft, startsAt: startsAt.toISOString() }),
     });
     const json = await res.json().catch(() => ({}));
     setBusy(null);
@@ -140,7 +148,7 @@ export default function SessionsManager({
               />
             </label>
             <label>
-              <span className="field-label">Starts at *</span>
+              <span className="field-label">Starts at — in the timezone beside it *</span>
               <input
                 required
                 type="datetime-local"
@@ -223,14 +231,7 @@ export default function SessionsManager({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="font-display text-lg font-semibold text-abyss">
-                  {new Intl.DateTimeFormat("en-GB", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  }).format(new Date(s.startsAt))}
+                  {formatDateTime(s.startsAt, s.timezone)}
                 </p>
                 <p className="mt-0.5 text-[0.84rem] text-teal">{s.courseTitle}</p>
                 {s.title && <p className="mt-0.5 text-[0.8rem] text-slate-ink">{s.title}</p>}
@@ -252,7 +253,20 @@ export default function SessionsManager({
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_10rem_10rem]">
+            <div className="mt-4 grid gap-3 sm:grid-cols-[13rem_1fr_7rem_9rem]">
+              <label>
+                <span className="field-label">Starts at ({s.timezone})</span>
+                <input
+                  type="datetime-local"
+                  defaultValue={toZonedInputValue(s.startsAt, s.timezone)}
+                  onBlur={(e) => {
+                    if (!e.target.value || e.target.value === toZonedInputValue(s.startsAt, s.timezone)) return;
+                    const next = zonedLocalToUtc(e.target.value, s.timezone);
+                    if (!Number.isNaN(next.getTime())) void patch(s.id, { startsAt: next.toISOString() });
+                  }}
+                  className="field"
+                />
+              </label>
               <label>
                 <span className="field-label">Teams link</span>
                 <input

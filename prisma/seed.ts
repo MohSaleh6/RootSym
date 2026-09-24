@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { BUSINESS_TZ, zonedLocalToUtc } from "../src/lib/datetime";
 
 const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -320,11 +321,16 @@ async function main() {
 
   const existingSessions = await prisma.courseSession.count({ where: { courseId: rca.id } });
   if (existingSessions === 0) {
-    const first = new Date();
-    first.setDate(first.getDate() + 21);
-    first.setHours(9, 0, 0, 0);
-    const second = new Date(first);
-    second.setDate(second.getDate() + 28);
+    // 09:00 in Amman three and seven weeks out. setHours() would mean 09:00 in
+    // whatever zone the seed runs in — UTC on a build server, which is 12:00
+    // in Amman and exactly the mistake that put the first cohort three hours
+    // late on the public site.
+    const day = (offset: number) => {
+      const d = new Date(Date.now() + offset * 86_400_000);
+      return d.toISOString().slice(0, 10);
+    };
+    const first = zonedLocalToUtc(`${day(21)}T09:00`, BUSINESS_TZ);
+    const second = zonedLocalToUtc(`${day(49)}T09:00`, BUSINESS_TZ);
 
     await prisma.courseSession.createMany({
       data: [

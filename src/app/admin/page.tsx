@@ -3,6 +3,7 @@ import { ArrowUpRight, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatJod } from "@/lib/money";
 import { AdminTitle, Card, Stat, Badge, Empty } from "./ui";
+import { formatAdminDateTime } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +36,6 @@ export default async function AdminDashboard() {
       }),
     ]);
 
-  const dateFmt = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
   return (
     <div className="space-y-8">
@@ -130,7 +124,7 @@ export default async function AdminDashboard() {
                 {upcoming.map((s) => (
                   <li key={s.id} className="px-6 py-4">
                     <p className="text-[0.86rem] font-semibold text-abyss">
-                      {dateFmt.format(s.startsAt)}
+                      {formatAdminDateTime(s.startsAt, s.timezone)}
                     </p>
                     <p className="mt-0.5 truncate text-[0.78rem] text-slate-ink">{s.course.title}</p>
                     <p className="mt-1.5 flex items-center gap-2 text-[0.72rem] text-slate-ink/70">

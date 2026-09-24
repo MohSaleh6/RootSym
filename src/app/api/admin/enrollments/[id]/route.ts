@@ -61,8 +61,8 @@ export async function PATCH(request: Request, { params }: Params) {
             data: { transferReference: parsed.data.transferReference || null },
           });
         }
-        const result = await confirmEnrollmentPaid(id);
-        return NextResponse.json({ ok: true, result });
+        const { outcome, customerEmailed } = await confirmEnrollmentPaid(id);
+        return NextResponse.json({ ok: true, result: outcome, customerEmailed });
       }
 
       case "cancel":
@@ -95,7 +95,7 @@ export async function PATCH(request: Request, { params }: Params) {
             accessResetCount: { increment: 1 },
           },
         });
-        await sendMail({
+        const customerEmailed = await sendMail({
           to: enrollment.email,
           subject: `A fresh joining link — ${enrollment.course.title}`,
           html: accessEmail({
@@ -105,11 +105,11 @@ export async function PATCH(request: Request, { params }: Params) {
             accessUrl: await accessUrl(token),
           }),
         });
-        return NextResponse.json({ ok: true, accessToken: token });
+        return NextResponse.json({ ok: true, accessToken: token, customerEmailed });
       }
 
-      case "resend_link":
-        await sendMail({
+      case "resend_link": {
+        const customerEmailed = await sendMail({
           to: enrollment.email,
           subject: `Your joining link — ${enrollment.course.title}`,
           html: accessEmail({
@@ -119,7 +119,8 @@ export async function PATCH(request: Request, { params }: Params) {
             accessUrl: await accessUrl(enrollment.accessToken),
           }),
         });
-        break;
+        return NextResponse.json({ ok: true, customerEmailed });
+      }
 
       case "set_session": {
         const sessionId = parsed.data.sessionId || null;

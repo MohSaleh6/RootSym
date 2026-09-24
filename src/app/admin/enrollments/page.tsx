@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { siteUrl } from "@/lib/enrollment";
 import { AdminTitle, Empty } from "../ui";
 import EnrollmentsTable, { type EnrollmentRow } from "./EnrollmentsTable";
+import { formatAdminDateTime } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Bookings" };
@@ -11,25 +12,18 @@ export default async function AdminEnrollmentsPage() {
     orderBy: { createdAt: "desc" },
     include: {
       course: { select: { title: true } },
-      session: { select: { startsAt: true, title: true } },
+      session: { select: { startsAt: true, title: true, timezone: true } },
     },
   });
 
   const base = await siteUrl();
-  const dateFmt = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
   const rows: EnrollmentRow[] = enrollments.map((e) => ({
     id: e.id,
     reference: e.reference,
     courseTitle: e.course.title,
     sessionLabel: e.session
-      ? `${dateFmt.format(e.session.startsAt)}${e.session.title ? ` — ${e.session.title}` : ""}`
+      ? `${formatAdminDateTime(e.session.startsAt, e.session.timezone)}${e.session.title ? ` — ${e.session.title}` : ""}`
       : null,
     type: e.type,
     fullName: e.fullName,

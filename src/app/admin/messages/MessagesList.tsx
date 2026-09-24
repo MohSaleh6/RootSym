@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Trash2, Mail, Reply } from "lucide-react";
+import { formatAdminDateTime } from "@/lib/datetime";
 
 export type MessageRow = {
   id: string;
@@ -39,13 +40,6 @@ export default function MessagesList({ rows }: { rows: MessageRow[] }) {
     router.refresh();
   }
 
-  const dateFmt = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
   return (
     <ul className="space-y-3">
@@ -73,7 +67,7 @@ export default function MessagesList({ rows }: { rows: MessageRow[] }) {
               </p>
             </div>
             <span className="font-mono text-[0.72rem] text-slate-ink/60">
-              {dateFmt.format(new Date(m.createdAt))}
+              {formatAdminDateTime(m.createdAt)}
             </span>
           </div>
 
