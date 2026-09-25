@@ -74,7 +74,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "Stop treating symptoms. Start removing roots. Live eight-hour RCA workshops by Rand Saleh.",
     url: siteUrl,
-    images: [{ url: "/brand/rootsym-logo.jpg", width: 1600, height: 900, alt: "RootSym" }],
+    images: [{ url: "/brand/rootsym-logo.jpg", width: 1200, height: 630, alt: "RootSym — by Rand Saleh" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -83,7 +83,12 @@ export async function generateMetadata(): Promise<Metadata> {
     images: ["/brand/rootsym-logo.jpg"],
   },
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   robots: { index: true, follow: true },
   };

@@ -420,3 +420,40 @@ html[dir="rtl"] .field-label { letter-spacing: 0.02em; text-transform: none; }
 @utility text-balance-pretty {
   text-wrap: balance;
 }
+
+/* ---- the emblem's gears (components/Logo.tsx) ------------------------------
+   Durations and directions are set per gear inline; these only say how. */
+@keyframes rs-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes rs-rock {
+  0%,
+  100% {
+    transform: rotate(-9deg);
+  }
+  50% {
+    transform: rotate(9deg);
+  }
+}
+.rs-turn {
+  animation-name: rs-turn;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.rs-rock {
+  animation-name: rs-rock;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rs-turn,
+  .rs-rock {
+    animation: none;
+  }
+}
